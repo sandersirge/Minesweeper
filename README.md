@@ -38,8 +38,28 @@ cd cppRyhmatoo
 make
 ./rungame
 ```
-## Windows
-Programmi pole veel Windows operatsioonisüsteemi peal testitud!<br />
-Üldised tingimused programmi kasutamiseks on samad, mis Linux'i puhul - SFML 3 ja C++ kompilaator. Sõltuvalt, kas programmi kasutada läbi mõne konkreetse IDE või *make* funktsionaalsuse, on vaja programm erinevalt sätestada.<br />
-Visual Studio puhul on aitab ametlik vikileht - https://www.sfml-dev.org/tutorials/3.0/getting-started/visual-studio/<br />
-Kasutades CMake'i, võib abiks olla - https://www.sfml-dev.org/tutorials/3.0/getting-started/cmake/
+Ubuntu/Debian (ka WSL) paketid:
+```shell
+sudo apt install build-essential cmake ninja-build pkg-config libsfml-dev
+```
+
+## CMake (Linux, WSL, Windows)
+```shell
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+cd build && ./rungame
+```
+CMake kasutab paigaldatud SFML 3-e; kui seda pole, laeb ja kompileerib ta selle ise (`-DMINESWEEPER_FETCH_SFML=OFF` keelab). Pildid kopeeritakse käivitatava faili kõrvale, seega käivita mäng `build` kaustast (CLionis: *Working directory* = build-kaust).
+
+## Windows (MSYS2)
+Testitud MSYS2 UCRT64 keskkonnas (GCC, SFML 3.1).
+1. Paigalda MSYS2: `winget install MSYS2.MSYS2`
+2. Ava **MSYS2 UCRT64** terminal ja paigalda tööriistad:
+   ```shell
+   pacman -S --needed mingw-w64-ucrt-x86_64-{gcc,gdb,cmake,ninja,pkgconf,sfml} make
+   ```
+3. Kompileeri samas terminalis kas `make` või ülaltoodud CMake käskudega.
+4. Väljaspool MSYS2 terminali käivitamiseks lisa `C:\msys64\ucrt64\bin` PATH-i (seal on vajalikud DLL-id).
+
+CLionis vali *Settings → Build, Execution, Deployment → Toolchains* alt MinGW tööriistakomplekt kaustaga `C:\msys64\ucrt64`.<br />
+Visual Studio puhul aitab ametlik vikileht - https://www.sfml-dev.org/tutorials/3.0/getting-started/visual-studio/

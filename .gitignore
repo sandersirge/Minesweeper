@@ -1,0 +1,10 @@
+# Build output (CMake build folders, CLion's cmake-build-*, Makefile objects and binary)
+build/
+cmake-build-*/
+*.o
+rungame
+rungame.exe
+
+# IDE files
+.idea/
+.vscode/
