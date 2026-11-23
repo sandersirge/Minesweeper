@@ -1,6 +1,6 @@
 # Builds the game as ./rungame (rungame.exe on Windows). Needs SFML 3, a C++17 compiler and make.
-#   make            build
-#   make run        build and start the game
+#   make            build the game and the tests
+#   make run       build and start the game
 #   make test       build and run the logic tests
 #   make clean      remove build output
 # Change the compiler with: make COMPILER=clang++
@@ -19,6 +19,9 @@ endif
 OBJECTS := main.o Minesweeper.o
 TEST_OBJECTS := tests/MinesweeperTest.o Minesweeper.o
 
+# Default target; IDEs such as CLion run "make all" when importing a Makefile project.
+all: rungame minesweeper_test
+
 rungame: $(OBJECTS)
 	$(COMPILER) $(OBJECTS) -o rungame $(SFML_LIBS)
 
@@ -35,6 +38,6 @@ test: minesweeper_test
 	./minesweeper_test
 
 clean:
-	rm -f $(OBJECTS) $(TEST_OBJECTS) rungame rungame.exe minesweeper_test minesweeper_test.exe
+	rm -f $(sort $(OBJECTS) $(TEST_OBJECTS)) rungame rungame.exe minesweeper_test minesweeper_test.exe
 
-.PHONY: run test clean
+.PHONY: all run test clean
