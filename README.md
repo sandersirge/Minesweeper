@@ -7,14 +7,22 @@ See grupitöö on kloon teadatuntud mängust *Minesweeper*, kasutades loogikaks 
  - Saab valida mängulaua suuruse (kõrguse ja laiuse eraldi)
  - Saab valida, mitu protsenti ruutudest on pommid
  - Saab valida terminali ja graafilise liidese vahel
+ - Esimene käik ei ole kunagi pomm (kui ruumi on, on ka selle ümbrus vaba)
+ - Tühja ruudu avamine avab kogu tühja ala koos ümbritsevate numbritega
+ - Võidad, kui kõik pommita ruudud on avatud (lippe ei pea panema)
+ - Graafilises liideses: vasak klõps avab, parem klõps paneb või võtab lipu; mängu lõpus klõpsa, et jätkata
+ - Pärast mängu saab alustada uut; sisendi lõppedes (Ctrl+D / Ctrl+Z) mäng sulgub
 
 # Projekti ülesehitus
  .<br />
  ├─ Pildid<br />
  │    └─ *.png - Kõik pildifailid mängulaua ruutude jaoks.<br />
- ├─ main.cpp - Loob mängu objekti ja alustab mängutsüklit.<br />
+ ├─ tests<br />
+ │    └─ MinesweeperTest.cpp - Mänguloogika testid (aknata).<br />
+ ├─ main.cpp - Küsib mängulaua andmed ja vaheldab terminali ning akna mängu.<br />
  ├─ Minesweeper.cpp<br />
  ├─ Minesweeper.h - Mängu loogika.<br />
+ ├─ CMakeLists.txt - CMake'i ehitus (mäng, testid).<br />
  ├─ Makefile - Kompileerib mängu ja teeb jooksutatava faili *rungame* (muutmise ja kasutamise juhend allpool).<br />
  └─ README.md
 
@@ -49,6 +57,7 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 cd build && ./rungame
 ```
+Testid: `ctest --test-dir build` (või `make test`).<br />
 CMake kasutab paigaldatud SFML 3-e; kui seda pole, laeb ja kompileerib ta selle ise (`-DMINESWEEPER_FETCH_SFML=OFF` keelab). Pildid kopeeritakse käivitatava faili kõrvale, seega käivita mäng `build` kaustast (CLionis: *Working directory* = build-kaust).
 
 ## Windows (MSYS2)

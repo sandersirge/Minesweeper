@@ -1,95 +1,106 @@
 #include "Minesweeper.h"
 
+#include <iostream>
+#include <optional>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
+namespace {
+
+// Terminali mäng: laud prinditakse ja käigud küsitakse, kuni mäng saab läbi.
+void mangiTerminalis(Minesweeper& ms) {
+	while (!ms.kasMangOnLabi()) {
+		ms.prindiMangulaud();
+		ms.kaikTerminalis();
+	}
+	ms.prindiMangulaud();
+}
+
+// Graafiline mäng: aken on avatud ainult mängu ajal, nii et terminalis küsimise ajal ei jää
+// vastamata aken ekraanile. Mängu lõpus jääb laud nähtavaks, kuni mängija klõpsab või vajutab
+// klahvi. Tagastab false, kui mängija sulges akna enne mängu lõppu.
+bool mangiGraafiliselt(Minesweeper& ms) {
+	sf::RenderWindow aken(sf::VideoMode({ 640, 480 }), "Minesweeper");
+	aken.setFramerateLimit(30);
+	std::cout << "Mäng käib aknas: vasak klõps avab ruudu, parem klõps paneb või võtab lipu.\n";
+
+	bool pealkiriMuudetud = false;
+	while (aken.isOpen()) {
+		while (const std::optional sundmus = aken.pollEvent()) {
+			if (sundmus->is<sf::Event::Closed>()) {
+				aken.close();
+			}
+			else if (const auto* muudetud = sundmus->getIf<sf::Event::Resized>()) {
+				// Vaade akna suuruseks, et laud täidaks alati kogu akna
+				aken.setView(sf::View(sf::FloatRect({ 0.f, 0.f },
+					{ static_cast<float>(muudetud->size.x), static_cast<float>(muudetud->size.y) })));
+			}
+			else if (const auto* hiir = sundmus->getIf<sf::Event::MouseButtonPressed>()) {
+				if (ms.kasMangOnLabi()) aken.close(); // lõpuekraanilt tagasi terminali
+				else ms.handleEvent(aken, hiir->button, hiir->position);
+			}
+			else if (sundmus->is<sf::Event::KeyPressed>() && ms.kasMangOnLabi()) {
+				aken.close();
+			}
+		}
+		if (!aken.isOpen()) break;
+
+		if (ms.kasMangOnLabi() && !pealkiriMuudetud) {
+			const std::string pealkiri = ms.kasOliKaotus()
+				? "Minesweeper - Kaotasid :( (klõpsa jätkamiseks)"
+				: "Minesweeper - Võitsid! (klõpsa jätkamiseks)";
+			aken.setTitle(sf::String::fromUtf8(pealkiri.begin(), pealkiri.end()));
+			pealkiriMuudetud = true;
+		}
+		aken.clear();
+		ms.kuvaMangulaud(aken);
+		aken.display();
+	}
+	return ms.kasMangOnLabi();
+}
+
+} // namespace
+
 int main() {
-
-	std::unique_ptr<Minesweeper> ms;
+#ifdef _WIN32
+	// Tekstid on UTF-8; ilma selleta näitaks Windowsi konsool täpitähti valesti
+	SetConsoleOutputCP(CP_UTF8);
+	SetConsoleCP(CP_UTF8);
+#endif
+	Minesweeper ms;
 	try {
-		ms = std::make_unique<Minesweeper>("Pildid"); // Constructor takes directory with pictures.
-	}												// When a specific picture fails to load, filename is thrown as error.
-	catch (std::string s) {
-		std::cout << "Pildifailist " << s << " sisselugemine ebaõnnestus!\n";
-		return 0;
+		ms.laeTekstuurid("Pildid");
+	}
+	catch (const std::string& fail) {
+		std::cout << "Pildifailist " << fail << " sisselugemine ebaõnnestus!\n";
+		return 1;
 	}
 
-	sf::RenderWindow window(sf::VideoMode({640, 480}), "Minesweeper", sf::Style::Default);//, sf::Style::Titlebar | sf::Style::Close);
-	window.setFramerateLimit(30);
+	try {
+		while (true) {
+			ms.kusiManguLauaAndmed();
 
-	sf::View view;
-	while (window.isOpen())
-	{
-		if(ms->getKuvaGraafika())
-		{
-			while (const std::optional event = window.pollEvent())
-			{
-				if (event->is<sf::Event::Closed>())
-					window.close();
-				else if (const auto* mouseButton = event->getIf<sf::Event::MouseButtonPressed>()) // Mouseevent instead!!
-					ms->handleEvent(window, mouseButton->button);
-				if (const auto* resized = event->getIf<sf::Event::Resized>())
-				{
-        			sf::FloatRect visibleArea(
-                	{0.f, 0.f},
-                	{static_cast<float>(resized->size.x),
-                	static_cast<float>(resized->size.y)}
-            		);
-
-            		view = sf::View(visibleArea);
-            		window.setView(view);
-    			}
+			if (ms.getKuvaGraafika()) {
+				if (!mangiGraafiliselt(ms)) break; // aken suleti mängu ajal - lõpetame
 			}
-		}
-		else
-		{
-			ms->kuvaMangulaud(window);
-			ms->kaikTerminalis();
-		}
+			else {
+				mangiTerminalis(ms);
+			}
 
-		if(ms->getKuvaGraafika()) 
-		{
-			window.clear();
-			ms->kuvaMangulaud(window);
-			window.display();
-		}
-
-		if (ms->kasMangOnLabi()) {
-			if (ms->kasOliKaotus()) ms->kuvaKaotusEkraan(window);
-			else ms->kuvaVoiduEkraan(window);
-			ms->kusiManguLauaAndmed();
+			std::cout << (ms.kasOliKaotus() ? "Kaotasid :(\n" : "Võitsid!\n");
+			if (loeTaisarv("Kas mängida uuesti? (1/0): ", 0, 1) == 0) break;
 		}
 	}
-	/*
-	// Esialgne versioon - terminalis
-	int valitudRida, valitudVeerg;
-	bool lipuPanek, korrektneSisend{false};
-	char valik;
-	
-	while (!ms->kasMangOnLabi())
-	{
-		ms->prindiMangulaud();
-		korrektneSisend = false;
-
-		//Tuleks kontrollida iga v��rtuse puhul veel, et sisestati �ige andmet��p - errorite kinnip��dmisega ilmselt
-		
-		std::cout << "Vali rida: ";
-		std::cin >> valitudRida;
-		std::cout << "Vali veerg: ";
-		std::cin >> valitudVeerg;
-		while (!korrektneSisend) {
-			std::cout << "Vali kas panna lipp v�i avada see m�ngulaua ruut (l - pane lipp, a - ava ruut): ";
-			std::cin >> valik;
-			if (valik == 'l') {
-				lipuPanek = true;
-				korrektneSisend = true;
-			}
-			else if (valik == 'a') {
-				lipuPanek = false;
-				korrektneSisend = true;
-			}
-		}
-		ms->teeKaik(valitudRida, valitudVeerg, lipuPanek);
-
-
-	}*/
-
+	catch (const SisendLopetatud&) {
+		std::cout << "\nSisend lõppes, mäng suletakse.\n";
+	}
 	return 0;
 }

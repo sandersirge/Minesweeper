@@ -32,19 +32,18 @@ else()
     message(FATAL_ERROR "SFML 3 not found. Install it or configure with -DMINESWEEPER_FETCH_SFML=ON.")
 endif()
 
-add_executable(rungame main.cpp Minesweeper.cpp)
-target_link_libraries(rungame PRIVATE SFML::Graphics)
-
+# Game logic as a library, shared by the game and the tests.
+add_library(minesweeper_core STATIC Minesweeper.cpp)
+target_include_directories(minesweeper_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(minesweeper_core PUBLIC SFML::Graphics)
 if(MSVC)
-    target_compile_options(rungame PRIVATE /W4)
+    target_compile_options(minesweeper_core PUBLIC /W4)
 else()
-    target_compile_options(rungame PRIVATE -Wall -Wextra)
+    target_compile_options(minesweeper_core PUBLIC -Wall -Wextra)
 endif()
 
-if(MINGW)
-    # Bundle the GCC runtime so the game also starts outside an MSYS2 shell.
-    target_link_options(rungame PRIVATE -static-libgcc -static-libstdc++)
-endif()
+add_executable(rungame main.cpp)
+target_link_libraries(rungame PRIVATE minesweeper_core)
 
 # The game loads its textures from "Pildid" relative to where it runs; keep a copy next to the
 # executable and run it from there (CLion: set the working directory to the build directory).
@@ -53,11 +52,23 @@ add_custom_command(TARGET rungame POST_BUILD
             ${CMAKE_CURRENT_SOURCE_DIR}/Pildid $<TARGET_FILE_DIR:rungame>/Pildid
     COMMENT "Copying textures next to rungame")
 
-# On Windows also copy the SFML DLLs next to the executable.
-if(WIN32)
-    add_custom_command(TARGET rungame POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E
-                $<IF:$<BOOL:$<TARGET_RUNTIME_DLLS:rungame>>,copy_if_different,true>
-                $<TARGET_RUNTIME_DLLS:rungame> $<TARGET_FILE_DIR:rungame>
-        COMMAND_EXPAND_LISTS)
+# On Windows copy the SFML DLLs next to an executable so it starts from anywhere.
+function(copy_runtime_dlls target)
+    if(WIN32)
+        add_custom_command(TARGET ${target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E
+                    $<IF:$<BOOL:$<TARGET_RUNTIME_DLLS:${target}>>,copy_if_different,true>
+                    $<TARGET_RUNTIME_DLLS:${target}> $<TARGET_FILE_DIR:${target}>
+            COMMAND_EXPAND_LISTS)
+    endif()
+endfunction()
+copy_runtime_dlls(rungame)
+
+# Logic tests (no window needed): ctest --test-dir <build folder>
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(minesweeper_test tests/MinesweeperTest.cpp)
+    target_link_libraries(minesweeper_test PRIVATE minesweeper_core)
+    copy_runtime_dlls(minesweeper_test)
+    add_test(NAME minesweeper_logic COMMAND minesweeper_test)
 endif()
