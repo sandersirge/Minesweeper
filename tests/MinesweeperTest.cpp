@@ -99,13 +99,75 @@ int main() {
 		kontrolli(ms.ruut(1, 1) == Minesweeper::LIPP, "lipp alles");
 	});
 
-	test("pommi avamine kaotab ja näitab kogu laua", [] {
-		Minesweeper ms = laud(2, 2, { { 0, 0 } });
-		ms.teeKaik(0, 0, false);
+	test("pommi avamine kaotab ja näitab pommid ning valed lipud", [] {
+		Minesweeper ms = laud(3, 3, { { 0, 0 }, { 2, 2 } });
+		ms.teeKaik(0, 0, true);  // õige lipp
+		ms.teeKaik(0, 2, true);  // vale lipp
+		ms.teeKaik(2, 2, false); // pomm
 		kontrolli(ms.kasMangOnLabi() && ms.kasOliKaotus(), "kaotus");
-		kontrolli(ms.ruut(0, 0) == Minesweeper::POMM, "pomm näha");
-		kontrolli(ms.ruut(1, 1) == '1', "teised ruudud avatud");
+		kontrolli(ms.ruut(2, 2) == Minesweeper::PLAHVATANUD, "avatud pomm on märgitud");
+		kontrolli(ms.ruut(0, 0) == Minesweeper::LIPP, "õige lipp jääb");
+		kontrolli(ms.ruut(0, 2) == Minesweeper::VALE_LIPP, "vale lipp märgitakse");
+		kontrolli(ms.ruut(1, 1) == Minesweeper::AVAMATA, "ülejäänud ruudud jäävad kinni");
 		kontrolli(!ms.teeKaik(1, 0, false), "pärast mängu lõppu käike ei tehta");
+	});
+
+	test("kaotusel näidatakse märkimata pommid", [] {
+		Minesweeper ms = laud(2, 3, { { 0, 0 }, { 1, 2 } });
+		ms.teeKaik(0, 0, false);
+		kontrolli(ms.ruut(0, 0) == Minesweeper::PLAHVATANUD, "plahvatanud pomm");
+		kontrolli(ms.ruut(1, 2) == Minesweeper::POMM, "teine pomm näha");
+	});
+
+	test("number avab ümbruse, kui lippe on õige arv", [] {
+		// Pomm (0,0); (1,1) näitab 1
+		Minesweeper ms = laud(3, 3, { { 0, 0 } });
+		ms.teeKaik(0, 1, false); // avab ainult "1"
+		kontrolli(ms.ruut(0, 1) == '1', "(0,1) avatud");
+		kontrolli(!ms.avaUmber(0, 1), "ilma liputa ei avata midagi");
+		ms.teeKaik(0, 0, true);
+		kontrolli(ms.avaUmber(0, 1), "lipuga avatakse ümbrus");
+		kontrolli(ms.ruut(1, 1) == '1' && ms.ruut(1, 2) == Minesweeper::TUHI, "naabrid avatud");
+		kontrolli(ms.kasMangOnLabi() && !ms.kasOliKaotus(), "kõik vabad ruudud avatud = võit");
+	});
+
+	test("valesti pandud lipuga ümbruse avamine kaotab", [] {
+		Minesweeper ms = laud(3, 3, { { 0, 0 } });
+		ms.teeKaik(0, 1, false);
+		ms.teeKaik(0, 2, true); // vale lipp, pomm (0,0) jääb kinni
+		kontrolli(ms.avaUmber(0, 1), "ümbrus avati");
+		kontrolli(ms.kasOliKaotus(), "pomm avati - kaotus");
+		kontrolli(ms.ruut(0, 0) == Minesweeper::PLAHVATANUD, "plahvatanud pomm");
+		kontrolli(ms.ruut(0, 2) == Minesweeper::VALE_LIPP, "vale lipp märgitud");
+	});
+
+	test("ümbrust ei avata tühjal, suletud ega lipuga ruudul", [] {
+		Minesweeper ms = laud(3, 3, { { 0, 0 } });
+		kontrolli(!ms.avaUmber(1, 1), "suletud ruut");
+		ms.teeKaik(1, 1, true);
+		kontrolli(!ms.avaUmber(1, 1), "lipuga ruut");
+		kontrolli(!ms.avaUmber(5, 5), "laua väline ruut");
+	});
+
+	test("pommide täpne arv ja piir", [] {
+		Minesweeper ms;
+		ms.uusMangPommidega(16, 30, 99);
+		kontrolli(!ms.kasAlanud(), "pommid pannakse alles esimesel avamisel");
+		ms.teeKaik(8, 15, false);
+		kontrolli(ms.kasAlanud(), "mäng algas");
+		kontrolli(ms.getPommideArv() == 99, "99 pommi");
+		Minesweeper tais;
+		tais.uusMangPommidega(3, 3, 50);
+		kontrolli(tais.getPommideArv() == 8, "vähemalt üks ruut jääb vabaks");
+	});
+
+	test("lippude arv", [] {
+		Minesweeper ms = laud(3, 3, { { 0, 0 } });
+		ms.teeKaik(0, 0, true);
+		ms.teeKaik(2, 2, true);
+		kontrolli(ms.getLippe() == 2, "kaks lippu");
+		ms.teeKaik(2, 2, true);
+		kontrolli(ms.getLippe() == 1, "lipu eemaldamine");
 	});
 
 	test("laua välised käigud lükatakse tagasi", [] {

@@ -32,25 +32,14 @@ else()
     message(FATAL_ERROR "SFML 3 not found. Install it or configure with -DMINESWEEPER_FETCH_SFML=ON.")
 endif()
 
-# Game logic as a library, shared by the game and the tests.
-add_library(minesweeper_core STATIC Minesweeper.cpp)
-target_include_directories(minesweeper_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(minesweeper_core PUBLIC SFML::Graphics)
-if(MSVC)
-    target_compile_options(minesweeper_core PUBLIC /W4)
-else()
-    target_compile_options(minesweeper_core PUBLIC -Wall -Wextra)
-endif()
-
-add_executable(rungame main.cpp)
-target_link_libraries(rungame PRIVATE minesweeper_core)
-
-# The game loads its textures from "Pildid" relative to where it runs; keep a copy next to the
-# executable and run it from there (CLion: set the working directory to the build directory).
-add_custom_command(TARGET rungame POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_CURRENT_SOURCE_DIR}/Pildid $<TARGET_FILE_DIR:rungame>/Pildid
-    COMMENT "Copying textures next to rungame")
+# Warnings for every target of this project (not for a downloaded SFML)
+function(minesweeper_warnings target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra)
+    endif()
+endfunction()
 
 # On Windows copy the SFML DLLs next to an executable so it starts from anywhere.
 function(copy_runtime_dlls target)
@@ -62,13 +51,49 @@ function(copy_runtime_dlls target)
             COMMAND_EXPAND_LISTS)
     endif()
 endfunction()
+
+# Game logic (no SFML), shared by the new GUI, the archived version and the tests.
+add_library(minesweeper_core STATIC Minesweeper.cpp)
+target_include_directories(minesweeper_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+minesweeper_warnings(minesweeper_core)
+
+# The game: menu and board drawn as pixel art in code (gui/), no image files needed.
+add_executable(rungame
+    main.cpp
+    gui/Ikoonid.cpp
+    gui/Kiri.cpp
+    gui/Louend.cpp
+    gui/ManguVaade.cpp
+    gui/MenuuVaade.cpp
+    gui/Rakendus.cpp
+    gui/Vaade.cpp)
+target_link_libraries(rungame PRIVATE minesweeper_core SFML::Graphics)
+minesweeper_warnings(rungame)
+if(MINGW)
+    # A GUI application: no console window next to the game
+    target_link_options(rungame PRIVATE -mwindows)
+endif()
 copy_runtime_dlls(rungame)
 
-# Logic tests (no window needed): ctest --test-dir <build folder>
+# The archived first version (terminal + simple window with the Pildid textures).
+option(MINESWEEPER_BUILD_ARCHIVE "Build the archived classic version" ON)
+if(MINESWEEPER_BUILD_ARCHIVE)
+    add_executable(rungame_klassikaline archive/klassikaline/main.cpp)
+    target_link_libraries(rungame_klassikaline PRIVATE minesweeper_core SFML::Graphics)
+    minesweeper_warnings(rungame_klassikaline)
+    add_custom_command(TARGET rungame_klassikaline POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_CURRENT_SOURCE_DIR}/archive/klassikaline/Pildid
+                $<TARGET_FILE_DIR:rungame_klassikaline>/Pildid
+        COMMENT "Copying the classic version's textures")
+    copy_runtime_dlls(rungame_klassikaline)
+endif()
+
+# Logic tests (no window or SFML needed): ctest --test-dir <build folder>
 include(CTest)
 if(BUILD_TESTING)
     add_executable(minesweeper_test tests/MinesweeperTest.cpp)
     target_link_libraries(minesweeper_test PRIVATE minesweeper_core)
-    copy_runtime_dlls(minesweeper_test)
+    minesweeper_warnings(minesweeper_test)
     add_test(NAME minesweeper_logic COMMAND minesweeper_test)
 endif()

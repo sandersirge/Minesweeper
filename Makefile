@@ -1,4 +1,5 @@
 # Builds the game as rungame (rungame.exe on Windows). Needs SFML 3, a C++17 compiler and make.
+# (The archived classic version in archive/klassikaline builds with CMake.)
 #   make            build the game and the tests
 #   make run        build and start the game
 #   make test       build and run the logic tests
@@ -10,13 +11,17 @@
 
 COMPILER ?= g++
 CXXFLAGS ?= -std=c++17 -O2 -Wall -Wextra
+CPPFLAGS += -I.
 
 # Windows compilers (MinGW) write name.exe even for "-o name"; ask the compiler which platform
 # it builds for, so this is right in cmd, PowerShell and Unix shells alike.
 ifneq ($(findstring mingw,$(shell $(COMPILER) -dumpmachine)),)
 EXE := .exe
+# A GUI application: no console window next to the game
+GUI_LDFLAGS := -mwindows
 else
 EXE :=
+GUI_LDFLAGS :=
 endif
 
 # cmd.exe keeps the quotes in `echo "x"`, a Unix shell drops them.
@@ -40,7 +45,9 @@ endif
 
 GAME := rungame$(EXE)
 TESTS := minesweeper_test$(EXE)
-OBJECTS := main.o Minesweeper.o
+GUI_SOURCES := $(wildcard gui/*.cpp)
+HEADERS := Minesweeper.h $(wildcard gui/*.hpp)
+OBJECTS := main.o Minesweeper.o $(GUI_SOURCES:.cpp=.o)
 TEST_OBJECTS := tests/MinesweeperTest.o Minesweeper.o
 CLEAN_FILES := $(sort $(OBJECTS) $(TEST_OBJECTS)) $(GAME) $(TESTS)
 
@@ -55,13 +62,13 @@ minesweeper_test: $(TESTS)
 endif
 
 $(GAME): $(OBJECTS)
-	$(COMPILER) $(OBJECTS) -o $@ $(SFML_LIBS)
+	$(COMPILER) $(OBJECTS) -o $@ $(SFML_LIBS) $(GUI_LDFLAGS)
 
 $(TESTS): $(TEST_OBJECTS)
-	$(COMPILER) $(TEST_OBJECTS) -o $@ $(SFML_LIBS)
+	$(COMPILER) $(TEST_OBJECTS) -o $@
 
-%.o: %.cpp Minesweeper.h
-	$(COMPILER) $(CXXFLAGS) $(SFML_CFLAGS) -c $< -o $@
+%.o: %.cpp $(HEADERS)
+	$(COMPILER) $(CXXFLAGS) $(CPPFLAGS) $(SFML_CFLAGS) -c $< -o $@
 
 run: $(GAME)
 	$(RUN_PREFIX)$(GAME)
