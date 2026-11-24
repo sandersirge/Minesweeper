@@ -66,15 +66,24 @@ GUI_OBJECTS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRC_DIR)/main.cpp $(
 TEST_OBJECTS := $(OBJ_DIR)/tests/minesweeper_test.o
 ALL_OBJECTS := $(CORE_OBJECTS) $(GUI_OBJECTS) $(TEST_OBJECTS)
 
-# Folder creation, running and cleaning differ between cmd.exe and a Unix shell
+# Running and cleaning differ between cmd.exe and a Unix shell
 ifeq ($(CMD_SHELL),1)
-make_dir = if not exist $(subst /,\,$(1)) mkdir $(subst /,\,$(1))
 run_program = $(subst /,\,$(1))
 remove_build = (if exist $(OBJ_ROOT) rmdir /S /Q $(OBJ_ROOT)) & (if exist $(LIB_ROOT) rmdir /S /Q $(LIB_ROOT)) & (if exist $(BIN_DIR) rmdir /S /Q $(BIN_DIR))
 else
-make_dir = mkdir -p $(1)
 run_program = ./$(1)
 remove_build = rm -rf $(OBJ_ROOT) $(LIB_ROOT) $(BIN_DIR)
+endif
+
+# Output folders are created while the Makefile is read, not in the recipes: that keeps a dry run
+# (make --just-print, which CLion reads) down to compiler commands only.
+BUILD_DIRS := $(patsubst %/,%,$(sort $(dir $(ALL_OBJECTS)) $(LIB_DIR)/ $(BIN_DIR)/))
+ifneq ($(MAKECMDGOALS),clean)
+ifeq ($(CMD_SHELL),1)
+$(foreach d,$(BUILD_DIRS),$(shell if not exist $(subst /,\,$(d)) mkdir $(subst /,\,$(d))))
+else
+$(shell mkdir -p $(BUILD_DIRS))
+endif
 endif
 
 # Default target; IDEs such as CLion run "make all" when importing a Makefile project.
@@ -85,23 +94,18 @@ rungame: $(GAME)
 minesweeper_test: $(TESTS)
 
 $(GAME): $(GUI_OBJECTS) $(CORE_LIB)
-	@$(call make_dir,$(BIN_DIR))
 	$(COMPILER) $(GUI_OBJECTS) -L$(LIB_DIR) -lminesweeper -o $@ $(SFML_LIBS) $(GUI_LDFLAGS)
 
 $(TESTS): $(TEST_OBJECTS) $(CORE_LIB)
-	@$(call make_dir,$(BIN_DIR))
 	$(COMPILER) $(TEST_OBJECTS) -L$(LIB_DIR) -lminesweeper -o $@
 
 $(CORE_LIB): $(CORE_OBJECTS)
-	@$(call make_dir,$(LIB_DIR))
 	ar rcs $@ $^
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
-	@$(call make_dir,$(dir $@))
 	$(COMPILER) $(CXXFLAGS) $(CPPFLAGS) $(DEPFLAGS) $(SFML_CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/tests/%.o: tests/%.cpp
-	@$(call make_dir,$(dir $@))
 	$(COMPILER) $(CXXFLAGS) $(CPPFLAGS) $(DEPFLAGS) -c $< -o $@
 
 run: $(GAME)
