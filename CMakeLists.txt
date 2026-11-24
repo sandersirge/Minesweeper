@@ -60,13 +60,13 @@ minesweeper_warnings(minesweeper_core)
 # The game: menu and board drawn as pixel art in code (gui/), no image files needed.
 add_executable(rungame
     main.cpp
-    gui/Ikoonid.cpp
-    gui/Kiri.cpp
-    gui/Louend.cpp
-    gui/ManguVaade.cpp
-    gui/MenuuVaade.cpp
-    gui/Rakendus.cpp
-    gui/Vaade.cpp)
+    gui/App.cpp
+    gui/Canvas.cpp
+    gui/GameScreen.cpp
+    gui/Icons.cpp
+    gui/MenuScreen.cpp
+    gui/PixelFont.cpp
+    gui/Screen.cpp)
 target_link_libraries(rungame PRIVATE minesweeper_core SFML::Graphics)
 minesweeper_warnings(rungame)
 if(MINGW)
@@ -78,15 +78,15 @@ copy_runtime_dlls(rungame)
 # The archived first version (terminal + simple window with the Pildid textures).
 option(MINESWEEPER_BUILD_ARCHIVE "Build the archived classic version" ON)
 if(MINESWEEPER_BUILD_ARCHIVE)
-    add_executable(rungame_klassikaline archive/klassikaline/main.cpp)
-    target_link_libraries(rungame_klassikaline PRIVATE minesweeper_core SFML::Graphics)
-    minesweeper_warnings(rungame_klassikaline)
-    add_custom_command(TARGET rungame_klassikaline POST_BUILD
+    add_executable(rungame_classic archive/classic/main.cpp)
+    target_link_libraries(rungame_classic PRIVATE minesweeper_core SFML::Graphics)
+    minesweeper_warnings(rungame_classic)
+    add_custom_command(TARGET rungame_classic POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-                ${CMAKE_CURRENT_SOURCE_DIR}/archive/klassikaline/Pildid
-                $<TARGET_FILE_DIR:rungame_klassikaline>/Pildid
+                ${CMAKE_CURRENT_SOURCE_DIR}/archive/classic/Pildid
+                $<TARGET_FILE_DIR:rungame_classic>/Pildid
         COMMENT "Copying the classic version's textures")
-    copy_runtime_dlls(rungame_klassikaline)
+    copy_runtime_dlls(rungame_classic)
 endif()
 
 # Logic tests (no window or SFML needed): ctest --test-dir <build folder>

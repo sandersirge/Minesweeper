@@ -11,7 +11,7 @@ Mõlemad kasutavad sama mänguloogikat (`Minesweeper.h`, `Minesweeper.cpp`).
 Ehitamine (projekti juurkaustast):
 ```shell
 cmake -S . -B build -G Ninja
-cmake --build build --target rungame_klassikaline
-cd build && ./rungame_klassikaline
+cmake --build build --target rungame_classic
+cd build && ./rungame_classic
 ```
 `Pildid` kopeeritakse käivitatava faili kõrvale; käivita see `build` kaustast.

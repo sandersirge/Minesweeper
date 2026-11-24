@@ -1,0 +1,20 @@
+# Code style for this project. CLion picks this file up automatically (Code > Reformat Code).
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: ForIndentation
+ColumnLimit: 110
+AccessModifierOffset: -4
+PointerAlignment: Left
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
+BreakBeforeBraces: Attach
+IndentCaseLabels: false
+FixNamespaceComments: true
+NamespaceIndentation: None
+SpaceBeforeParens: ControlStatements
+IncludeBlocks: Preserve
+SortIncludes: CaseSensitive

@@ -1,8 +1,8 @@
-// Minesweeper graafilise liidesega: menüü (raskusaste või kohandatud laud) ja mänguvaade.
-// Mänguloogika on Minesweeper.h/.cpp failides, liides gui/ kaustas.
-#include "gui/Rakendus.hpp"
+// Minesweeper with a graphical interface: a menu (difficulty level or a custom board) and the
+// game screen. The game logic is in Minesweeper.h/.cpp, the interface in gui/.
+#include "gui/App.hpp"
 
 int main() {
-	Rakendus rakendus;
-	return rakendus.kaivita();
+	App app;
+	return app.run();
 }

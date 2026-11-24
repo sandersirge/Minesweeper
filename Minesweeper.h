@@ -1,101 +1,105 @@
 #pragma once
+
 #include <array>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-// Mängu loogika. Ei sõltu SFML-ist: graafiline liides (gui/) ja arhiveeritud klassikaline
-// versioon (archive/klassikaline/) joonistavad laua ruut() abil.
+// Game logic. It does not depend on SFML: the GUI (gui/) and the archived classic version
+// (archive/classic/) draw the board through cell().
 
-// Visatakse, kui sisend lõpeb (Ctrl+D / Ctrl+Z või suunatud sisendi lõpp), et mäng saaks
-// korrektselt sulguda, selle asemel et küsida sama küsimust lõputult.
-struct SisendLopetatud : std::runtime_error {
-	SisendLopetatud() : std::runtime_error("Sisend lõppes") {}
+// Thrown when input ends (Ctrl+D / Ctrl+Z or the end of piped input), so the program can close
+// cleanly instead of asking the same question forever.
+struct InputEnded : std::runtime_error {
+	InputEnded() : std::runtime_error("input ended") {}
 };
 
-// Küsib täisarvu vahemikus [min, max], kuni saab sobiva. Vigane sisend (nt tähed) visatakse ära
-// ja küsitakse uuesti; sisendi lõpus visatakse SisendLopetatud.
-int loeTaisarv(const std::string& kusimus, int min, int max);
+// Asks for an integer in [min, max] until it gets one. Invalid input (e.g. letters) is skipped and
+// the question is asked again; at the end of input InputEnded is thrown.
+int readInt(const std::string& prompt, int min, int max);
 
 class Minesweeper {
 public:
-	// Mängulaua ruudud, nagu mängija neid näeb
-	static constexpr char AVAMATA = '?';     // mängija pole veel avanud
-	static constexpr char TUHI = ' ';        // avatud, ühtegi pommi kõrval pole
-	static constexpr char LIPP = '!';        // mängija pandud lipp
-	static constexpr char POMM = 'X';        // pomm (näidatakse kaotuse järel)
-	static constexpr char PLAHVATANUD = '*'; // pomm, mille mängija avas
-	static constexpr char VALE_LIPP = 'V';   // lipp kohas, kus pommi polnud (kaotuse järel)
-	// '1'...'8' - avatud ruut, number näitab, mitu pommi on ümberringi
+	// Board cells as the player sees them
+	static constexpr char HIDDEN = '?';     // not opened yet
+	static constexpr char EMPTY = ' ';      // opened, no mines around
+	static constexpr char FLAG = '!';       // flagged by the player
+	static constexpr char MINE = 'X';       // mine (shown after a loss)
+	static constexpr char EXPLODED = '*';   // the mine the player opened
+	static constexpr char WRONG_FLAG = 'V'; // flag on a cell without a mine (shown after a loss)
+	// '1'...'8': opened cell, the number of mines around it
 
-	// Terminali versiooni piirid: aken on 640x480 pikslit ja iga ruut vähemalt 1 piksel
-	static constexpr int MAX_KORGUS = 480;
-	static constexpr int MAX_LAIUS = 640;
+	// Limits for the terminal version: the window is 640x480 pixels, at least 1 pixel per cell
+	static constexpr int MAX_ROWS = 480;
+	static constexpr int MAX_COLUMNS = 640;
 
-	// Küsib terminalis mängulaua andmed ja alustab uut mängu.
-	void kusiManguLauaAndmed();
-	// Alustab uut mängu, pommide arv protsendina. Pommid paigutatakse esimese avamise ajal, nii
-	// et esimene käik on alati ohutu.
-	void uusMang(int korgus, int laius, int protsent, bool graafiline);
-	// Sama, kuid pommide täpse arvuga (graafilise liidese raskusastmed). Arv piiratakse nii, et
-	// vähemalt üks ruut jääb vabaks.
-	void uusMangPommidega(int korgus, int laius, size_t pommid);
-	// Paneb pommid kohe kindlatele kohtadele (testimiseks); esimese käigu kaitset siis pole.
-	void seaPommid(const std::vector<bool>& pommiKohad);
-	// Kas mängu teated (nt "See ruut on juba avatud.") prinditakse terminali. Graafiline
-	// liides lülitab need välja.
-	void naitaTeateid(bool naita) { teated = naita; }
+	// Asks for the board settings in the terminal and starts a new game.
+	void askBoardSettings();
+	// Starts a new game with the mine count given as a percentage. Mines are placed on the first
+	// opened cell, so the first move is always safe.
+	void newGame(int rows, int columns, int minePercent, bool graphical);
+	// Same, with an exact mine count (GUI difficulty levels). The count is capped so that at least
+	// one cell stays free.
+	void newGameWithMines(int rows, int columns, size_t mines);
+	// Places mines at fixed cells right away (for tests); the first move is not protected then.
+	void setMines(const std::vector<bool>& mineCells);
+	// Whether game messages (e.g. "See ruut on juba avatud.") are printed to the terminal. The GUI
+	// turns them off.
+	void setMessages(bool print) { printMessages = print; }
 
-	// Avab ruudu või paneb/võtab lipu. Tagastab false, kui käik polnud lubatud.
-	bool teeKaik(int rida, int veerg, bool kasLipp);
-	// "Akord": kui avatud numbri ümber on sama palju lippe kui number näitab, avatakse kõik
-	// ülejäänud naabrid (valesti pandud lipu korral võib see pommi avada). Tagastab, kas midagi
-	// avati.
-	bool avaUmber(int rida, int veerg);
-	void kaikTerminalis();
-	void prindiMangulaud() const;
+	// Opens a cell or places/removes a flag. Returns false if the move was not allowed.
+	bool makeMove(int row, int column, bool flag);
+	// "Chord": if an opened number has as many flags around it as it shows, all other neighbours
+	// are opened (a wrongly placed flag can open a mine). Returns whether anything was opened.
+	bool chord(int row, int column);
+	void moveFromTerminal();
+	void printBoard() const;
 
-	char ruut(int rida, int veerg) const;
-	int getKorgus() const { return korgus; }
-	int getLaius() const { return laius; }
-	size_t getPommideArv() const { return pommideArv; }
-	size_t getLippe() const;
-	bool kasAlanud() const { return pommidPaigutatud; } // esimene ruut on avatud
-	bool kasMangOnLabi() const { return mangOnLabi; }
-	bool kasOliKaotus() const { return oliKaotus; }
-	bool getKuvaGraafika() const { return kuvaGraafiliselt; }
+	char cell(int row, int column) const;
+	int rows() const { return rowCount; }
+	int columns() const { return columnCount; }
+	size_t mineCount() const { return totalMines; }
+	size_t flagCount() const;
+	bool hasStarted() const { return minesPlaced; } // the first cell has been opened
+	bool isOver() const { return over; }
+	bool isLost() const { return lost; }
+	bool wantsGraphics() const { return graphics; }
 
 private:
-	bool mangOnLabi{ false }, oliKaotus{ false }, kuvaGraafiliselt{ false };
-	bool pommidPaigutatud{ false };
-	bool teated{ true };
-	int korgus{ 0 };
-	int laius{ 0 };
-	size_t vektoritePikkus{ 0 };
-	size_t pommideArv{ 0 };
-	size_t avatudRuute{ 0 };
-
-	// Maatriksid on ühe pika jadana: ruut (rida, veerg) on indeksil rida * laius + veerg
-	std::vector<bool> pommid;      // pommide asetused
-	std::vector<int> ruudud;       // mitu pommi on iga ruudu ümber (pommi enda kohal -1)
-	std::vector<char> mangijaLaud; // mängulaud, mida mängija näeb (vt konstante ülal)
-
-	// Kuni 8 naabri indeksid ilma mälueralduseta (suurel laual kutsutakse seda sadu tuhandeid kordi)
-	struct Naabrid {
-		std::array<size_t, 8> indeksid{};
-		size_t arv{ 0 };
-		const size_t* begin() const { return indeksid.data(); }
-		const size_t* end() const { return indeksid.data() + arv; }
-		size_t size() const { return arv; }
+	// Indices of up to 8 neighbours without allocating (called hundreds of thousands of times on
+	// a large board)
+	struct Neighbours {
+		std::array<size_t, 8> indices{};
+		size_t count{0};
+		const size_t* begin() const { return indices.data(); }
+		const size_t* end() const { return indices.data() + count; }
+		size_t size() const { return count; }
 	};
-	Naabrid naabrid(size_t indeks) const;
-	void teade(const char* tekst) const;
-	void paigutaPommid(size_t ohutuIndeks);
-	void arvutaRuudud();
-	// Avab ruudu (ja tühja ala). Tagastab false, kui avati pomm.
-	bool avaRuut(size_t indeks);
-	void avaRuudud(size_t algusIndeks);
-	void kontrolliVoitu();
-	void kaotus(size_t plahvatanudIndeks);
+
+	bool over{false};
+	bool lost{false};
+	bool graphics{false};
+	bool minesPlaced{false};
+	bool printMessages{true};
+	int rowCount{0};
+	int columnCount{0};
+	size_t cellCount{0};
+	size_t totalMines{0};
+	size_t openedCount{0};
+
+	// The grids are stored as one long vector: cell (row, column) is at index row * columns + column
+	std::vector<bool> mines;   // where the mines are
+	std::vector<int> adjacent; // number of mines around each cell (-1 on a mine)
+	std::vector<char> board;   // what the player sees (see the constants above)
+
+	Neighbours neighbours(size_t index) const;
+	void message(const char* text) const;
+	void placeMines(size_t safeIndex);
+	void countAdjacent();
+	// Opens a cell (and its empty area). Returns false if a mine was opened.
+	bool openCell(size_t index);
+	void floodOpen(size_t startIndex);
+	void checkWin();
+	void lose(size_t explodedIndex);
 };

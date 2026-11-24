@@ -2,7 +2,7 @@
 See grupitöö on kloon teadatuntud mängust *Minesweeper*, kasutades loogikaks C++ programmeerimiskeelt ning SFML teeki graafika jaoks.<br /><br />
 <img width="700" alt="Menüü, mäng ja kaotus" src="docs/ekraanipilt.png" /><br />
 
-Graafiline stiil (sinine piksel-ruudustik, reageeriv nägu, laine mängu lõpus) on inspireeritud projektist [Kofybrek/Minesweeper](https://github.com/Kofybrek/Minesweeper); kood ja piksel-graafika on selle projekti omad. Esimene versioon (terminal ja pildifailidega aken) on kaustas [archive/klassikaline](archive/klassikaline).
+Graafiline stiil (sinine piksel-ruudustik, reageeriv nägu, laine mängu lõpus) on inspireeritud projektist [Kofybrek/Minesweeper](https://github.com/Kofybrek/Minesweeper); kood ja piksel-graafika on selle projekti omad. Esimene versioon (terminal ja pildifailidega aken) on kaustas [archive/classic](archive/classic).
 
 # Funktsionaalsused
  - Algusmenüü: raskusaste (algaja 9×9 · 10, keskmine 16×16 · 40, ekspert 16×30 · 99) või kohandatud kõrgus, laius ja pommide arv
@@ -19,18 +19,19 @@ Graafiline stiil (sinine piksel-ruudustik, reageeriv nägu, laine mängu lõpus)
 # Projekti ülesehitus
  .<br />
  ├─ gui<br />
- │    ├─ Rakendus.* - Aken, menüü ja mängu vahetamine.<br />
- │    ├─ MenuuVaade.* - Algusmenüü (raskusaste, kohandatud laud).<br />
- │    ├─ ManguVaade.* - Mängulaud, ülemine riba, laine ja lõputeade.<br />
- │    ├─ Kiri.* - 5x7 piksel-kiri (ka Õ Ä Ö Ü).<br />
- │    ├─ Ikoonid.* - Lipp, pomm ja nägu piksel-graafikana.<br />
- │    ├─ Louend.*, Vaade.*, Teema.hpp - Joonistamine, nupud, värvid.<br />
- ├─ archive/klassikaline - Esimene versioon (terminal ja Pildid/ kausta piltidega aken).<br />
+ │    ├─ App.* - Aken, menüü ja mängu vahetamine.<br />
+ │    ├─ MenuScreen.* - Algusmenüü (raskusaste, kohandatud laud).<br />
+ │    ├─ GameScreen.* - Mängulaud, ülemine riba, laine ja lõputeade.<br />
+ │    ├─ PixelFont.* - 5x7 piksel-kiri (ka Õ Ä Ö Ü).<br />
+ │    ├─ Icons.* - Lipp, pomm ja nägu piksel-graafikana.<br />
+ │    └─ Canvas.*, Screen.*, Theme.hpp - Joonistamine, nupud, värvid.<br />
+ ├─ archive/classic - Esimene versioon (terminal ja Pildid/ kausta piltidega aken).<br />
  ├─ tests<br />
  │    └─ MinesweeperTest.cpp - Mänguloogika testid (aknata).<br />
  ├─ main.cpp - Käivitab graafilise rakenduse.<br />
  ├─ Minesweeper.cpp<br />
  ├─ Minesweeper.h - Mängu loogika (ei sõltu SFML-ist).<br />
+ ├─ .clang-format - Koodi vormindus (CLion: Code → Reformat Code).<br />
  ├─ CMakeLists.txt - CMake'i ehitus (mäng, arhiveeritud versioon, testid).<br />
  ├─ Makefile - Kompileerib mängu *rungame* ja testid (muutmise ja kasutamise juhend allpool).<br />
  └─ README.md
@@ -67,7 +68,7 @@ cmake --build build
 cd build && ./rungame
 ```
 Testid: `ctest --test-dir build` (või `make test`).<br />
-CMake kasutab paigaldatud SFML 3-e; kui seda pole, laeb ja kompileerib ta selle ise (`-DMINESWEEPER_FETCH_SFML=OFF` keelab). Mäng ei vaja pildifaile, kogu graafika joonistatakse koodis. Arhiveeritud versioon ehitatakse sihtmärgina `rungame_klassikaline` (`-DMINESWEEPER_BUILD_ARCHIVE=OFF` jätab selle välja).
+CMake kasutab paigaldatud SFML 3-e; kui seda pole, laeb ja kompileerib ta selle ise (`-DMINESWEEPER_FETCH_SFML=OFF` keelab). Mäng ei vaja pildifaile, kogu graafika joonistatakse koodis. Arhiveeritud versioon ehitatakse sihtmärgina `rungame_classic` (`-DMINESWEEPER_BUILD_ARCHIVE=OFF` jätab selle välja).
 
 ## Windows (MSYS2)
 Testitud MSYS2 UCRT64 keskkonnas (GCC, SFML 3.1).

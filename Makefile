@@ -1,5 +1,5 @@
 # Builds the game as rungame (rungame.exe on Windows). Needs SFML 3, a C++17 compiler and make.
-# (The archived classic version in archive/klassikaline builds with CMake.)
+# (The archived classic version in archive/classic builds with CMake.)
 #   make            build the game and the tests
 #   make run        build and start the game
 #   make test       build and run the logic tests

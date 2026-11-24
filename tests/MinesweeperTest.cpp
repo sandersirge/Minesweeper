@@ -1,226 +1,232 @@
-// Mänguloogika testid. Akent ega pilte pole vaja: pommid pannakse seaPommid() abil kindlatele
-// kohtadele. Käivita: ctest --test-dir build (või otse build/minesweeper_test).
+// Game logic tests. No window or images needed: setMines() puts mines on fixed cells.
+// Run: ctest --test-dir build (or build/minesweeper_test directly), or "make test".
 #include "../Minesweeper.h"
 
 #include <functional>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
-namespace {
-int ebaonnestunud = 0;
-int kokku = 0;
+using namespace std;
 
-void kontrolli(bool tingimus, const std::string& kirjeldus) {
-	kokku++;
-	if (!tingimus) {
-		ebaonnestunud++;
-		std::cerr << "  EBAÕNNESTUS: " << kirjeldus << '\n';
+namespace {
+
+int failures = 0;
+int checks = 0;
+
+void check(bool condition, const string& description) {
+	checks++;
+	if (!condition) {
+		failures++;
+		cerr << "  FAILED: " << description << '\n';
 	}
 }
 
-// Laud, kus pommid on antud (rida, veerg) kohtadel
-Minesweeper laud(int korgus, int laius, const std::vector<std::pair<int, int>>& pommid) {
-	Minesweeper ms;
-	ms.uusMang(korgus, laius, 10, false);
-	std::vector<bool> kohad(static_cast<size_t>(korgus) * laius, false);
-	for (auto [r, v] : pommid) kohad.at(static_cast<size_t>(r) * laius + v) = true;
-	ms.seaPommid(kohad);
-	return ms;
+// A board with mines at the given (row, column) cells
+Minesweeper board(int rows, int columns, const vector<pair<int, int>>& mineCells) {
+	Minesweeper game;
+	game.newGame(rows, columns, 10, false);
+	vector<bool> cells(static_cast<size_t>(rows) * columns, false);
+	for (const auto& [r, c] : mineCells) {
+		cells.at(static_cast<size_t>(r) * columns + c) = true;
+	}
+	game.setMines(cells);
+	return game;
 }
 
-// Vaigistab mängu teated (std::cout) testi ajaks
-struct Vaikne {
-	std::ostringstream puhver;
-	std::streambuf* vana = std::cout.rdbuf(puhver.rdbuf());
-	~Vaikne() { std::cout.rdbuf(vana); }
+// Silences the game's messages (cout) during a test
+struct Quiet {
+	ostringstream buffer;
+	streambuf* previous = cout.rdbuf(buffer.rdbuf());
+	~Quiet() { cout.rdbuf(previous); }
 };
 
-void test(const std::string& nimi, const std::function<void()>& keha) {
-	const int enne = ebaonnestunud;
+void test(const string& name, const function<void()>& body) {
+	const int before = failures;
 	{
-		Vaikne vaikne;
-		keha();
+		Quiet quiet;
+		body();
 	}
-	std::cout << (ebaonnestunud == enne ? "[ OK ] " : "[FAIL] ") << nimi << '\n';
+	cout << (failures == before ? "[ OK ] " : "[FAIL] ") << name << '\n';
 }
+
 } // namespace
 
 int main() {
-	test("numbrid ei keera rea äärest järgmisele reale", [] {
-		// 3x4 laud, pomm paremal üleval (0,3). Vana kood luges (1,0) naabriks indeksi 3 ehk (0,3).
-		Minesweeper ms = laud(3, 4, { { 0, 3 } });
-		ms.teeKaik(2, 0, false);
-		kontrolli(ms.ruut(1, 0) == Minesweeper::TUHI, "(1,0) on tühi, mitte 1");
-		kontrolli(ms.ruut(0, 2) == '1', "(0,2) näitab 1");
-		kontrolli(ms.ruut(1, 3) == '1', "(1,3) näitab 1");
+	test("numbers do not wrap from the end of a row to the next row", [] {
+		// 3x4 board, mine at the top right (0,3). The old code counted index 3 as a neighbour of (1,0).
+		Minesweeper game = board(3, 4, {{0, 3}});
+		game.makeMove(2, 0, false);
+		check(game.cell(1, 0) == Minesweeper::EMPTY, "(1,0) is empty, not 1");
+		check(game.cell(0, 2) == '1', "(0,2) shows 1");
+		check(game.cell(1, 3) == '1', "(1,3) shows 1");
 	});
 
-	test("tühja ala avamine viimase ruudu juures ei jookse kokku", [] {
-		Minesweeper ms = laud(3, 3, { { 0, 0 } });
-		kontrolli(ms.teeKaik(2, 2, false), "käik lubatud");
-		kontrolli(ms.ruut(2, 2) == Minesweeper::TUHI, "(2,2) on tühi");
+	test("opening an empty area next to the last cell does not crash", [] {
+		Minesweeper game = board(3, 3, {{0, 0}});
+		check(game.makeMove(2, 2, false), "move allowed");
+		check(game.cell(2, 2) == Minesweeper::EMPTY, "(2,2) is empty");
 	});
 
-	test("tühi ala avab ka diagonaalsed numbrid ja mäng võidetakse", [] {
-		Minesweeper ms = laud(3, 3, { { 0, 0 } });
-		ms.teeKaik(2, 2, false);
-		kontrolli(ms.ruut(1, 1) == '1', "(1,1) avatud, 1");
-		kontrolli(ms.ruut(0, 1) == '1' && ms.ruut(1, 0) == '1', "servanumbrid avatud");
-		kontrolli(ms.kasMangOnLabi() && !ms.kasOliKaotus(), "kõik vabad ruudud avatud = võit");
-		kontrolli(ms.ruut(0, 0) == Minesweeper::LIPP, "võidu järel on pommil lipp");
+	test("an empty area also opens diagonal numbers and the game is won", [] {
+		Minesweeper game = board(3, 3, {{0, 0}});
+		game.makeMove(2, 2, false);
+		check(game.cell(1, 1) == '1', "(1,1) opened, 1");
+		check(game.cell(0, 1) == '1' && game.cell(1, 0) == '1', "edge numbers opened");
+		check(game.isOver() && !game.isLost(), "all free cells open = win");
+		check(game.cell(0, 0) == Minesweeper::FLAG, "after a win the mine is flagged");
 	});
 
-	test("lipud jäävad tühja ala avamisel alles", [] {
-		Minesweeper ms = laud(3, 3, { { 0, 0 } });
-		ms.teeKaik(1, 1, true);
-		ms.teeKaik(2, 2, false);
-		kontrolli(ms.ruut(1, 1) == Minesweeper::LIPP, "lipp alles");
-		kontrolli(!ms.kasMangOnLabi(), "lipu all on veel vaba ruut, mäng käib");
-		ms.teeKaik(1, 1, true); // võtab lipu ära
-		ms.teeKaik(1, 1, false);
-		kontrolli(ms.kasMangOnLabi() && !ms.kasOliKaotus(), "viimase ruudu avamine võidab");
+	test("flags survive opening an empty area", [] {
+		Minesweeper game = board(3, 3, {{0, 0}});
+		game.makeMove(1, 1, true);
+		game.makeMove(2, 2, false);
+		check(game.cell(1, 1) == Minesweeper::FLAG, "flag kept");
+		check(!game.isOver(), "a free cell is still under the flag, game goes on");
+		game.makeMove(1, 1, true); // removes the flag
+		game.makeMove(1, 1, false);
+		check(game.isOver() && !game.isLost(), "opening the last cell wins");
 	});
 
-	test("avatud ruudule ei saa lippu panna ega seda uuesti avada", [] {
-		Minesweeper ms = laud(2, 3, { { 0, 0 } });
-		ms.teeKaik(1, 1, false);
-		kontrolli(ms.ruut(1, 1) == '1', "(1,1) avatud");
-		kontrolli(!ms.teeKaik(1, 1, true), "lipukäik avatud ruudule keelatud");
-		kontrolli(ms.ruut(1, 1) == '1', "ruut jäi avatuks");
-		kontrolli(!ms.teeKaik(1, 1, false), "uuesti avamine keelatud");
+	test("an opened cell cannot be flagged or opened again", [] {
+		Minesweeper game = board(2, 3, {{0, 0}});
+		game.makeMove(1, 1, false);
+		check(game.cell(1, 1) == '1', "(1,1) opened");
+		check(!game.makeMove(1, 1, true), "flagging an opened cell is refused");
+		check(game.cell(1, 1) == '1', "cell stays open");
+		check(!game.makeMove(1, 1, false), "opening again is refused");
 	});
 
-	test("lipuga ruutu ei saa avada", [] {
-		Minesweeper ms = laud(2, 2, { { 0, 0 } });
-		ms.teeKaik(1, 1, true);
-		kontrolli(!ms.teeKaik(1, 1, false), "avamine keelatud");
-		kontrolli(ms.ruut(1, 1) == Minesweeper::LIPP, "lipp alles");
+	test("a flagged cell cannot be opened", [] {
+		Minesweeper game = board(2, 2, {{0, 0}});
+		game.makeMove(1, 1, true);
+		check(!game.makeMove(1, 1, false), "opening refused");
+		check(game.cell(1, 1) == Minesweeper::FLAG, "flag kept");
 	});
 
-	test("pommi avamine kaotab ja näitab pommid ning valed lipud", [] {
-		Minesweeper ms = laud(3, 3, { { 0, 0 }, { 2, 2 } });
-		ms.teeKaik(0, 0, true);  // õige lipp
-		ms.teeKaik(0, 2, true);  // vale lipp
-		ms.teeKaik(2, 2, false); // pomm
-		kontrolli(ms.kasMangOnLabi() && ms.kasOliKaotus(), "kaotus");
-		kontrolli(ms.ruut(2, 2) == Minesweeper::PLAHVATANUD, "avatud pomm on märgitud");
-		kontrolli(ms.ruut(0, 0) == Minesweeper::LIPP, "õige lipp jääb");
-		kontrolli(ms.ruut(0, 2) == Minesweeper::VALE_LIPP, "vale lipp märgitakse");
-		kontrolli(ms.ruut(1, 1) == Minesweeper::AVAMATA, "ülejäänud ruudud jäävad kinni");
-		kontrolli(!ms.teeKaik(1, 0, false), "pärast mängu lõppu käike ei tehta");
+	test("opening a mine loses and shows mines and wrong flags", [] {
+		Minesweeper game = board(3, 3, {{0, 0}, {2, 2}});
+		game.makeMove(0, 0, true);  // correct flag
+		game.makeMove(0, 2, true);  // wrong flag
+		game.makeMove(2, 2, false); // mine
+		check(game.isOver() && game.isLost(), "lost");
+		check(game.cell(2, 2) == Minesweeper::EXPLODED, "the opened mine is marked");
+		check(game.cell(0, 0) == Minesweeper::FLAG, "correct flag stays");
+		check(game.cell(0, 2) == Minesweeper::WRONG_FLAG, "wrong flag is marked");
+		check(game.cell(1, 1) == Minesweeper::HIDDEN, "other cells stay closed");
+		check(!game.makeMove(1, 0, false), "no moves after the game is over");
 	});
 
-	test("kaotusel näidatakse märkimata pommid", [] {
-		Minesweeper ms = laud(2, 3, { { 0, 0 }, { 1, 2 } });
-		ms.teeKaik(0, 0, false);
-		kontrolli(ms.ruut(0, 0) == Minesweeper::PLAHVATANUD, "plahvatanud pomm");
-		kontrolli(ms.ruut(1, 2) == Minesweeper::POMM, "teine pomm näha");
+	test("unflagged mines are shown after a loss", [] {
+		Minesweeper game = board(2, 3, {{0, 0}, {1, 2}});
+		game.makeMove(0, 0, false);
+		check(game.cell(0, 0) == Minesweeper::EXPLODED, "exploded mine");
+		check(game.cell(1, 2) == Minesweeper::MINE, "other mine shown");
 	});
 
-	test("number avab ümbruse, kui lippe on õige arv", [] {
-		// Pomm (0,0); (1,1) näitab 1
-		Minesweeper ms = laud(3, 3, { { 0, 0 } });
-		ms.teeKaik(0, 1, false); // avab ainult "1"
-		kontrolli(ms.ruut(0, 1) == '1', "(0,1) avatud");
-		kontrolli(!ms.avaUmber(0, 1), "ilma liputa ei avata midagi");
-		ms.teeKaik(0, 0, true);
-		kontrolli(ms.avaUmber(0, 1), "lipuga avatakse ümbrus");
-		kontrolli(ms.ruut(1, 1) == '1' && ms.ruut(1, 2) == Minesweeper::TUHI, "naabrid avatud");
-		kontrolli(ms.kasMangOnLabi() && !ms.kasOliKaotus(), "kõik vabad ruudud avatud = võit");
+	test("a number opens its neighbours when it has the right number of flags", [] {
+		// Mine at (0,0); (0,1) shows 1
+		Minesweeper game = board(3, 3, {{0, 0}});
+		game.makeMove(0, 1, false); // opens only the "1"
+		check(game.cell(0, 1) == '1', "(0,1) opened");
+		check(!game.chord(0, 1), "nothing opens without a flag");
+		game.makeMove(0, 0, true);
+		check(game.chord(0, 1), "with the flag the neighbours open");
+		check(game.cell(1, 1) == '1' && game.cell(1, 2) == Minesweeper::EMPTY, "neighbours opened");
+		check(game.isOver() && !game.isLost(), "all free cells open = win");
 	});
 
-	test("valesti pandud lipuga ümbruse avamine kaotab", [] {
-		Minesweeper ms = laud(3, 3, { { 0, 0 } });
-		ms.teeKaik(0, 1, false);
-		ms.teeKaik(0, 2, true); // vale lipp, pomm (0,0) jääb kinni
-		kontrolli(ms.avaUmber(0, 1), "ümbrus avati");
-		kontrolli(ms.kasOliKaotus(), "pomm avati - kaotus");
-		kontrolli(ms.ruut(0, 0) == Minesweeper::PLAHVATANUD, "plahvatanud pomm");
-		kontrolli(ms.ruut(0, 2) == Minesweeper::VALE_LIPP, "vale lipp märgitud");
+	test("chording with a wrong flag loses", [] {
+		Minesweeper game = board(3, 3, {{0, 0}});
+		game.makeMove(0, 1, false);
+		game.makeMove(0, 2, true); // wrong flag, the mine at (0,0) stays closed
+		check(game.chord(0, 1), "neighbours opened");
+		check(game.isLost(), "a mine was opened - lost");
+		check(game.cell(0, 0) == Minesweeper::EXPLODED, "exploded mine");
+		check(game.cell(0, 2) == Minesweeper::WRONG_FLAG, "wrong flag marked");
 	});
 
-	test("ümbrust ei avata tühjal, suletud ega lipuga ruudul", [] {
-		Minesweeper ms = laud(3, 3, { { 0, 0 } });
-		kontrolli(!ms.avaUmber(1, 1), "suletud ruut");
-		ms.teeKaik(1, 1, true);
-		kontrolli(!ms.avaUmber(1, 1), "lipuga ruut");
-		kontrolli(!ms.avaUmber(5, 5), "laua väline ruut");
+	test("chording does nothing on hidden, flagged or outside cells", [] {
+		Minesweeper game = board(3, 3, {{0, 0}});
+		check(!game.chord(1, 1), "hidden cell");
+		game.makeMove(1, 1, true);
+		check(!game.chord(1, 1), "flagged cell");
+		check(!game.chord(5, 5), "outside the board");
 	});
 
-	test("pommide täpne arv ja piir", [] {
-		Minesweeper ms;
-		ms.uusMangPommidega(16, 30, 99);
-		kontrolli(!ms.kasAlanud(), "pommid pannakse alles esimesel avamisel");
-		ms.teeKaik(8, 15, false);
-		kontrolli(ms.kasAlanud(), "mäng algas");
-		kontrolli(ms.getPommideArv() == 99, "99 pommi");
-		Minesweeper tais;
-		tais.uusMangPommidega(3, 3, 50);
-		kontrolli(tais.getPommideArv() == 8, "vähemalt üks ruut jääb vabaks");
+	test("moves outside the board are refused", [] {
+		Minesweeper game = board(2, 2, {{0, 0}});
+		check(!game.makeMove(2, 0, false) && !game.makeMove(0, -1, true), "outside the board");
 	});
 
-	test("lippude arv", [] {
-		Minesweeper ms = laud(3, 3, { { 0, 0 } });
-		ms.teeKaik(0, 0, true);
-		ms.teeKaik(2, 2, true);
-		kontrolli(ms.getLippe() == 2, "kaks lippu");
-		ms.teeKaik(2, 2, true);
-		kontrolli(ms.getLippe() == 1, "lipu eemaldamine");
-	});
-
-	test("laua välised käigud lükatakse tagasi", [] {
-		Minesweeper ms = laud(2, 2, { { 0, 0 } });
-		kontrolli(!ms.teeKaik(2, 0, false) && !ms.teeKaik(0, -1, true), "väljaspool lauda");
-	});
-
-	test("esimene käik pole kunagi pomm ja avab ala, kui ruumi on", [] {
+	test("the first move is never a mine and opens an area when there is room", [] {
 		for (int i = 0; i < 200; i++) {
-			Minesweeper ms;
-			ms.uusMang(5, 5, 90, false); // 22 pommi 25 ruudust - naabreid ei saa vabaks jätta
-			ms.teeKaik(2, 2, false);
-			kontrolli(!ms.kasOliKaotus(), "tihe laud: esimene käik ohutu");
+			Minesweeper game;
+			game.newGame(5, 5, 90, false); // 22 mines in 25 cells - no room to keep neighbours free
+			game.makeMove(2, 2, false);
+			check(!game.isLost(), "dense board: first move is safe");
 		}
 		for (int i = 0; i < 200; i++) {
-			Minesweeper ms;
-			ms.uusMang(5, 5, 50, false); // 12 pommi, 16 kohta väljaspool naabreid
-			ms.teeKaik(2, 2, false);
-			kontrolli(ms.ruut(2, 2) == Minesweeper::TUHI, "esimene ruut on tühi");
+			Minesweeper game;
+			game.newGame(5, 5, 50, false); // 12 mines, 16 cells outside the neighbourhood
+			game.makeMove(2, 2, false);
+			check(game.cell(2, 2) == Minesweeper::EMPTY, "first cell is empty");
 		}
 	});
 
-	test("pomme on täpselt protsendi jagu", [] {
-		Minesweeper ms;
-		ms.uusMang(10, 10, 30, false);
-		ms.teeKaik(0, 0, false);
-		kontrolli(ms.getPommideArv() == 30, "30 pommi");
+	test("the mine count matches the percentage", [] {
+		Minesweeper game;
+		game.newGame(10, 10, 30, false);
+		game.makeMove(0, 0, false);
+		check(game.mineCount() == 30, "30 mines");
 	});
 
-	test("suur laud paljude pommidega valmib (vana rand() jäi siin lõputult tööle)", [] {
-		Minesweeper ms;
-		ms.uusMang(Minesweeper::MAX_KORGUS, Minesweeper::MAX_LAIUS, 60, false);
-		ms.teeKaik(0, 0, false);
-		kontrolli(ms.getPommideArv() == 307200u * 60 / 100, "184320 pommi");
+	test("exact mine count and its limit", [] {
+		Minesweeper game;
+		game.newGameWithMines(16, 30, 99);
+		check(!game.hasStarted(), "mines are placed on the first opened cell");
+		game.makeMove(8, 15, false);
+		check(game.hasStarted(), "game started");
+		check(game.mineCount() == 99, "99 mines");
+		Minesweeper full;
+		full.newGameWithMines(3, 3, 50);
+		check(full.mineCount() == 8, "at least one cell stays free");
 	});
 
-	test("loeTaisarv küsib uuesti ja lõpetab sisendi lõpus", [] {
-		std::istringstream sisend("abc\n0\n42\n7\n");
-		std::streambuf* vana = std::cin.rdbuf(sisend.rdbuf());
-		const int arv = loeTaisarv("? ", 1, 9);
-		kontrolli(arv == 7, "tähed ja vahemikust välja jäävad arvud jäetakse vahele");
-		bool visati = false;
+	test("flag count", [] {
+		Minesweeper game = board(3, 3, {{0, 0}});
+		game.makeMove(0, 0, true);
+		game.makeMove(2, 2, true);
+		check(game.flagCount() == 2, "two flags");
+		game.makeMove(2, 2, true);
+		check(game.flagCount() == 1, "removing a flag");
+	});
+
+	test("a large board with many mines is ready quickly (the old rand() looped forever)", [] {
+		Minesweeper game;
+		game.newGame(Minesweeper::MAX_ROWS, Minesweeper::MAX_COLUMNS, 60, false);
+		game.makeMove(0, 0, false);
+		check(game.mineCount() == 307200u * 60 / 100, "184320 mines");
+	});
+
+	test("readInt asks again and stops at the end of input", [] {
+		istringstream input("abc\n0\n42\n7\n");
+		streambuf* previous = cin.rdbuf(input.rdbuf());
+		const int value = readInt("? ", 1, 9);
+		check(value == 7, "letters and out-of-range numbers are skipped");
+		bool thrown = false;
 		try {
-			loeTaisarv("? ", 1, 9);
+			readInt("? ", 1, 9);
+		} catch (const InputEnded&) {
+			thrown = true;
 		}
-		catch (const SisendLopetatud&) {
-			visati = true;
-		}
-		kontrolli(visati, "sisendi lõpus visatakse SisendLopetatud");
-		std::cin.rdbuf(vana);
-		std::cin.clear();
+		check(thrown, "InputEnded is thrown at the end of input");
+		cin.rdbuf(previous);
+		cin.clear();
 	});
 
-	std::cout << '\n' << (kokku - ebaonnestunud) << "/" << kokku << " kontrolli õnnestus\n";
-	return ebaonnestunud == 0 ? 0 : 1;
+	cout << '\n' << (checks - failures) << "/" << checks << " checks passed\n";
+	return failures == 0 ? 0 : 1;
 }
