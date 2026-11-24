@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Canvas.hpp"
-#include "GameScreen.hpp"
-#include "MenuScreen.hpp"
+#include "gui/canvas.hpp"
+#include "gui/game_screen.hpp"
+#include "gui/menu_screen.hpp"
 
 // The window and switching between screens (menu <-> game). The window resizes to each screen
 // and scales logical pixels by a whole number, so the pixel art stays sharp.

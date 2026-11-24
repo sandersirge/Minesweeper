@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Screen.hpp"
+#include "gui/screen.hpp"
 
 #include <array>
 #include <cstddef>

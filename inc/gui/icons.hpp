@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Canvas.hpp"
+#include "gui/canvas.hpp"
 
 // 16x16 pixel-art icons (flag, mine, face), drawn for this project.
 namespace icons {

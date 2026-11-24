@@ -5,6 +5,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Programs (and Windows DLLs) go to <build>/bin, static libraries to <build>/lib
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
@@ -53,20 +58,21 @@ function(copy_runtime_dlls target)
 endfunction()
 
 # Game logic (no SFML), shared by the new GUI, the archived version and the tests.
-add_library(minesweeper_core STATIC Minesweeper.cpp)
-target_include_directories(minesweeper_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_library(minesweeper_core STATIC src/minesweeper.cpp)
+set_target_properties(minesweeper_core PROPERTIES OUTPUT_NAME minesweeper)
+target_include_directories(minesweeper_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 minesweeper_warnings(minesweeper_core)
 
-# The game: menu and board drawn as pixel art in code (gui/), no image files needed.
+# The game: menu and board drawn as pixel art in code (src/gui, inc/gui), no image files needed.
 add_executable(rungame
-    main.cpp
-    gui/App.cpp
-    gui/Canvas.cpp
-    gui/GameScreen.cpp
-    gui/Icons.cpp
-    gui/MenuScreen.cpp
-    gui/PixelFont.cpp
-    gui/Screen.cpp)
+    src/main.cpp
+    src/gui/app.cpp
+    src/gui/canvas.cpp
+    src/gui/game_screen.cpp
+    src/gui/icons.cpp
+    src/gui/menu_screen.cpp
+    src/gui/pixel_font.cpp
+    src/gui/screen.cpp)
 target_link_libraries(rungame PRIVATE minesweeper_core SFML::Graphics)
 minesweeper_warnings(rungame)
 if(MINGW)
@@ -75,7 +81,7 @@ if(MINGW)
 endif()
 copy_runtime_dlls(rungame)
 
-# The archived first version (terminal + simple window with the Pildid textures).
+# The archived first version (terminal + simple window with the pildid textures).
 option(MINESWEEPER_BUILD_ARCHIVE "Build the archived classic version" ON)
 if(MINESWEEPER_BUILD_ARCHIVE)
     add_executable(rungame_classic archive/classic/main.cpp)
@@ -83,8 +89,8 @@ if(MINESWEEPER_BUILD_ARCHIVE)
     minesweeper_warnings(rungame_classic)
     add_custom_command(TARGET rungame_classic POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-                ${CMAKE_CURRENT_SOURCE_DIR}/archive/classic/Pildid
-                $<TARGET_FILE_DIR:rungame_classic>/Pildid
+                ${CMAKE_CURRENT_SOURCE_DIR}/archive/classic/pildid
+                $<TARGET_FILE_DIR:rungame_classic>/pildid
         COMMENT "Copying the classic version's textures")
     copy_runtime_dlls(rungame_classic)
 endif()
@@ -92,7 +98,7 @@ endif()
 # Logic tests (no window or SFML needed): ctest --test-dir <build folder>
 include(CTest)
 if(BUILD_TESTING)
-    add_executable(minesweeper_test tests/MinesweeperTest.cpp)
+    add_executable(minesweeper_test tests/minesweeper_test.cpp)
     target_link_libraries(minesweeper_test PRIVATE minesweeper_core)
     minesweeper_warnings(minesweeper_test)
     add_test(NAME minesweeper_logic COMMAND minesweeper_test)

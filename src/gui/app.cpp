@@ -1,7 +1,7 @@
-#include "App.hpp"
+#include "gui/app.hpp"
 
-#include "Icons.hpp"
-#include "Theme.hpp"
+#include "gui/icons.hpp"
+#include "gui/theme.hpp"
 
 #include <algorithm>
 #include <optional>

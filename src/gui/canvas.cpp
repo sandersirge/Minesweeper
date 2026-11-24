@@ -1,4 +1,4 @@
-#include "Canvas.hpp"
+#include "gui/canvas.hpp"
 
 using namespace std;
 

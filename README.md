@@ -18,22 +18,26 @@ Graafiline stiil (sinine piksel-ruudustik, reageeriv nägu, laine mängu lõpus)
 
 # Projekti ülesehitus
  .<br />
- ├─ gui<br />
- │    ├─ App.* - Aken, menüü ja mängu vahetamine.<br />
- │    ├─ MenuScreen.* - Algusmenüü (raskusaste, kohandatud laud).<br />
- │    ├─ GameScreen.* - Mängulaud, ülemine riba, laine ja lõputeade.<br />
- │    ├─ PixelFont.* - 5x7 piksel-kiri (ka Õ Ä Ö Ü).<br />
- │    ├─ Icons.* - Lipp, pomm ja nägu piksel-graafikana.<br />
- │    └─ Canvas.*, Screen.*, Theme.hpp - Joonistamine, nupud, värvid.<br />
- ├─ archive/classic - Esimene versioon (terminal ja Pildid/ kausta piltidega aken).<br />
+ ├─ inc - Päisefailid (*.hpp).<br />
+ │    ├─ minesweeper.hpp - Mängu loogika (ei sõltu SFML-ist).<br />
+ │    └─ gui - Graafilise liidese päised.<br />
+ ├─ src - Lähtekood (*.cpp).<br />
+ │    ├─ main.cpp - Käivitab graafilise rakenduse.<br />
+ │    ├─ minesweeper.cpp - Mängu loogika.<br />
+ │    └─ gui<br />
+ │         ├─ app.cpp - Aken, menüü ja mängu vahetamine.<br />
+ │         ├─ menu_screen.cpp - Algusmenüü (raskusaste, kohandatud laud).<br />
+ │         ├─ game_screen.cpp - Mängulaud, ülemine riba, laine ja lõputeade.<br />
+ │         ├─ pixel_font.cpp - 5x7 piksel-kiri (ka Õ Ä Ö Ü).<br />
+ │         ├─ icons.cpp - Lipp, pomm ja nägu piksel-graafikana.<br />
+ │         └─ canvas.cpp, screen.cpp (+ theme.hpp) - Joonistamine, nupud, värvid.<br />
  ├─ tests<br />
- │    └─ MinesweeperTest.cpp - Mänguloogika testid (aknata).<br />
- ├─ main.cpp - Käivitab graafilise rakenduse.<br />
- ├─ Minesweeper.cpp<br />
- ├─ Minesweeper.h - Mängu loogika (ei sõltu SFML-ist).<br />
+ │    └─ minesweeper_test.cpp - Mänguloogika testid (aknata).<br />
+ ├─ archive/classic - Esimene versioon (terminal ja pildid/ kausta piltidega aken).<br />
+ ├─ obj, lib, bin - Makefile'i väljund (objektfailid, loogika teek, programmid); gitis ignoreeritud.<br />
  ├─ .clang-format - Koodi vormindus (CLion: Code → Reformat Code).<br />
  ├─ CMakeLists.txt - CMake'i ehitus (mäng, arhiveeritud versioon, testid).<br />
- ├─ Makefile - Kompileerib mängu *rungame* ja testid (muutmise ja kasutamise juhend allpool).<br />
+ ├─ Makefile - Kompileerib mängu *bin/rungame* ja testid (muutmise ja kasutamise juhend allpool).<br />
  └─ README.md
 
 # Mängu kasutamise juhend
@@ -42,7 +46,7 @@ Graafiline stiil (sinine piksel-ruudustik, reageeriv nägu, laine mängu lõpus)
 Mängule on loodud ka *Makefile*, et automaatselt kompileerida ja linkida.<br />
 ```shell
 make
-./rungame
+./bin/rungame     # või: make run
 ```
 #### Mängu jooksutamiseks on vaja järgmisi pakette:<br />
  - SFML, versioon 3 (lihtsaim on kasutada enda süsteemi paketihaldurit)<br />
@@ -54,7 +58,7 @@ git clone https://github.com/MartinMaenniste/cppRyhmatoo.git
 cd cppRyhmatoo
 
 make
-./rungame
+./bin/rungame
 ```
 Ubuntu/Debian (ka WSL) paketid:
 ```shell
@@ -65,9 +69,9 @@ sudo apt install build-essential cmake ninja-build pkg-config libsfml-dev
 ```shell
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-cd build && ./rungame
+./build/bin/rungame
 ```
-Testid: `ctest --test-dir build` (või `make test`).<br />
+Testid: `ctest --test-dir build` (või `make test`). CMake paneb programmid kausta `build/bin` ja teegi kausta `build/lib`.<br />
 CMake kasutab paigaldatud SFML 3-e; kui seda pole, laeb ja kompileerib ta selle ise (`-DMINESWEEPER_FETCH_SFML=OFF` keelab). Mäng ei vaja pildifaile, kogu graafika joonistatakse koodis. Arhiveeritud versioon ehitatakse sihtmärgina `rungame_classic` (`-DMINESWEEPER_BUILD_ARCHIVE=OFF` jätab selle välja).
 
 ## Windows (MSYS2)

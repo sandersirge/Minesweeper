@@ -1,6 +1,6 @@
 // Game logic tests. No window or images needed: setMines() puts mines on fixed cells.
-// Run: ctest --test-dir build (or build/minesweeper_test directly), or "make test".
-#include "../Minesweeper.h"
+// Run: ctest --test-dir build (or build/bin/minesweeper_test directly), or "make test".
+#include "minesweeper.hpp"
 
 #include <functional>
 #include <iostream>

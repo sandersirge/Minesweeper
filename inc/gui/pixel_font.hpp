@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Canvas.hpp"
+#include "gui/canvas.hpp"
 
 #include <string_view>
 

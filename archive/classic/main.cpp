@@ -1,7 +1,7 @@
 // The archived classic version: the board settings are asked in the terminal and the game is
-// played either in the terminal or in a simple window using the images in Pildid/. The new
-// graphical interface is in gui/. Built with CMake as the target rungame_classic.
-#include "Minesweeper.h"
+// played either in the terminal or in a simple window using the images in pildid/. The new
+// graphical interface is in src/gui. Built with CMake as the target rungame_classic.
+#include "minesweeper.hpp"
 
 #include <SFML/Graphics.hpp>
 
@@ -160,7 +160,7 @@ int main() {
 #endif
 	Textures textures;
 	try {
-		textures.load("Pildid");
+		textures.load("pildid");
 	} catch (const string& file) {
 		cout << "Pildifailist " << file << " sisselugemine ebaõnnestus!\n";
 		return 1;

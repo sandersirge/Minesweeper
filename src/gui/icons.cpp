@@ -1,6 +1,6 @@
-#include "Icons.hpp"
+#include "gui/icons.hpp"
 
-#include "Theme.hpp"
+#include "gui/theme.hpp"
 
 #include <array>
 #include <string>

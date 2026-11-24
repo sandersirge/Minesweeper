@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-// Game logic. It does not depend on SFML: the GUI (gui/) and the archived classic version
+// Game logic. It does not depend on SFML: the GUI (src/gui, inc/gui) and the archived classic version
 // (archive/classic/) draw the board through cell().
 
 // Thrown when input ends (Ctrl+D / Ctrl+Z or the end of piped input), so the program can close

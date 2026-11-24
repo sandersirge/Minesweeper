@@ -1,12 +1,12 @@
-# Build output (CMake build folders, CLion's cmake-build-*, Makefile objects and binary)
+# Build output: CMake build folders, CLion's cmake-build-*, and the Makefile's obj/, lib/, bin/
 build/
 cmake-build-*/
+obj/
+lib/
+bin/
 *.o
-rungame
-rungame.exe
+*.d
 
 # IDE files
 .idea/
 .vscode/
-minesweeper_test
-minesweeper_test.exe

@@ -1,8 +1,8 @@
-#include "MenuScreen.hpp"
+#include "gui/menu_screen.hpp"
 
-#include "Icons.hpp"
-#include "PixelFont.hpp"
-#include "Theme.hpp"
+#include "gui/icons.hpp"
+#include "gui/pixel_font.hpp"
+#include "gui/theme.hpp"
 
 #include <algorithm>
 #include <string>

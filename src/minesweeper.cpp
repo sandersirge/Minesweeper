@@ -1,4 +1,4 @@
-#include "Minesweeper.h"
+#include "minesweeper.hpp"
 
 #include <algorithm>
 #include <iostream>

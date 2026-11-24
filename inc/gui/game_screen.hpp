@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Icons.hpp"
-#include "MenuScreen.hpp"
-#include "Minesweeper.h"
-#include "Screen.hpp"
+#include "gui/icons.hpp"
+#include "gui/menu_screen.hpp"
+#include "gui/screen.hpp"
+#include "minesweeper.hpp"
 
 #include <optional>
 #include <random>

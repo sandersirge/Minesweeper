@@ -1,7 +1,7 @@
-#include "Screen.hpp"
+#include "gui/screen.hpp"
 
-#include "PixelFont.hpp"
-#include "Theme.hpp"
+#include "gui/pixel_font.hpp"
+#include "gui/theme.hpp"
 
 #include <cmath>
 
