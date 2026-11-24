@@ -73,9 +73,13 @@ The Makefile builds the game and the tests. Output goes to three folders (all ig
 
 | Folder | Contents |
 |---|---|
-| `obj/` | object files (`.o`) and header dependency files (`.d`), mirroring `src/` |
-| `lib/` | the game logic as a static library, `libminesweeper.a` |
+| `obj/<platform>/` | object files (`.o`) and header dependency files (`.d`), mirroring `src/` |
+| `lib/<platform>/` | the game logic as a static library, `libminesweeper.a` |
 | `bin/` | the programs: `rungame` and `minesweeper_test` (`.exe` on Windows) |
+
+`<platform>` is the compiler's target, for example `x86_64-w64-mingw32` (MSYS2) or
+`x86_64-linux-gnu` (Linux/WSL), so building the same folder from Windows and from WSL keeps the two
+sets of files apart.
 
 ### Commands
 
@@ -89,7 +93,7 @@ Windows use `mingw32-make` (same arguments).
 | `make minesweeper_test` | builds only the tests |
 | `make run` | builds and starts the game |
 | `make test` | builds and runs the tests |
-| `make clean` | deletes `obj/`, `lib/` and `bin/` |
+| `make clean` | deletes `obj/`, `lib/` and `bin/` (for every platform) |
 | `make -j8` | builds with 8 parallel jobs (any number works) |
 | `make COMPILER=clang++` | uses another compiler (default `g++`) |
 | `make CXXFLAGS="-std=c++17 -O0 -g -Wall -Wextra"` | debug build (no optimisation, debug info) |
@@ -187,9 +191,13 @@ one in the toolbar and press ▶. Tests can also be run from *Run → Run 'All C
 
 ### Option B: open as a Makefile project
 
-CLion reads the Makefile by doing a dry run of `make all`. If the build output already exists that
-dry run prints nothing, so after moving or renaming files use **Tools → Makefile → Clean and
-Reload Makefile Project**.
+CLion reads the Makefile by doing a dry run of `make all` (`--just-print`). The Makefile lists every
+compile command in a dry run even when the build is up to date. After moving or renaming files use
+**Tools → Makefile → Reload Makefile Project**.
+
+Use the run configurations from the toolbar (`rungame`, `minesweeper_test`), not the ▶ icon next to
+`main()` in a file: that icon creates a *C/C++ File* configuration, which compiles one file on its
+own and fails for this project.
 
 Run configurations are not created with the executable filled in. To set one up:
 
@@ -221,8 +229,13 @@ stays on its own line.
 ## 6. Troubleshooting
 
 **"No compilation commands found" / "file does not belong to any target" in CLion** (Makefile
-project): the dry run saw an up-to-date build. Use *Tools → Makefile → Clean and Reload Makefile
-Project*, or open the project with CMake instead.
+project): reload with *Tools → Makefile → Reload Makefile Project*. If it persists, check that the
+toolchain points to MSYS2 (section 4) and try *Clean and Reload Makefile Project*, or open the
+project with CMake instead.
+
+**CLion builds with `g++.exe ...\main.cpp -o main` and fails**: the selected run configuration is a
+*C/C++ File* configuration (created by the ▶ icon next to `main()`). Select `rungame` in the toolbar
+and delete the *C/C++ File* entry in *Run → Edit Configurations…*.
 
 **"The code execution cannot proceed because libsfml-graphics-3.dll was not found"**: Windows cannot
 find the SFML DLLs. Add `C:\msys64\ucrt64\bin` to your PATH and restart the terminal or CLion. CMake

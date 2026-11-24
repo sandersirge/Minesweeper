@@ -3,11 +3,13 @@
 #   make            build bin/rungame and bin/minesweeper_test
 #   make run        build and start the game
 #   make test       build and run the logic tests
-#   make clean      remove obj/, lib/ and bin/
+#   make clean      remove obj/, lib/ and bin/ (for every platform)
 # Change the compiler with: make COMPILER=clang++
 #
-# Layout: sources in src/, headers in inc/. Build output goes to obj/ (object files and header
-# dependencies), lib/ (the game logic as a static library) and bin/ (programs); all are gitignored.
+# Layout: sources in src/, headers in inc/. Build output goes to obj/<platform>/ (object files and
+# header dependencies), lib/<platform>/ (the game logic as a static library) and bin/ (programs);
+# all are gitignored. <platform> is the compiler's target, e.g. x86_64-w64-mingw32 or
+# x86_64-linux-gnu, so a Windows build and a WSL build of the same folder do not mix their files.
 #
 # Works with GNU make in a Unix shell (Linux, macOS, WSL, MSYS2) and with mingw32-make running
 # recipes through Windows cmd.exe (e.g. CLion with an MSYS2 toolchain).
@@ -17,14 +19,19 @@ CXXFLAGS ?= -std=c++17 -O2 -Wall -Wextra
 CPPFLAGS += -Iinc
 DEPFLAGS = -MMD -MP
 
-SRC_DIR := src
-OBJ_DIR := obj
-LIB_DIR := lib
-BIN_DIR := bin
+# The platform the compiler builds for (asking the compiler works in cmd, PowerShell and Unix
+# shells alike)
+MACHINE := $(strip $(shell $(COMPILER) -dumpmachine))
 
-# Windows compilers (MinGW) write name.exe even for "-o name"; ask the compiler which platform
-# it builds for, so this is right in cmd, PowerShell and Unix shells alike.
-ifneq ($(findstring mingw,$(shell $(COMPILER) -dumpmachine)),)
+SRC_DIR := src
+OBJ_ROOT := obj
+LIB_ROOT := lib
+BIN_DIR := bin
+OBJ_DIR := $(OBJ_ROOT)/$(MACHINE)
+LIB_DIR := $(LIB_ROOT)/$(MACHINE)
+
+# Windows compilers (MinGW) write name.exe even for "-o name"
+ifneq ($(findstring mingw,$(MACHINE)),)
 EXE := .exe
 # A GUI application: no console window next to the game
 GUI_LDFLAGS := -mwindows
@@ -63,11 +70,11 @@ ALL_OBJECTS := $(CORE_OBJECTS) $(GUI_OBJECTS) $(TEST_OBJECTS)
 ifeq ($(CMD_SHELL),1)
 make_dir = if not exist $(subst /,\,$(1)) mkdir $(subst /,\,$(1))
 run_program = $(subst /,\,$(1))
-remove_build = (if exist $(OBJ_DIR) rmdir /S /Q $(OBJ_DIR)) & (if exist $(LIB_DIR) rmdir /S /Q $(LIB_DIR)) & (if exist $(BIN_DIR) rmdir /S /Q $(BIN_DIR))
+remove_build = (if exist $(OBJ_ROOT) rmdir /S /Q $(OBJ_ROOT)) & (if exist $(LIB_ROOT) rmdir /S /Q $(LIB_ROOT)) & (if exist $(BIN_DIR) rmdir /S /Q $(BIN_DIR))
 else
 make_dir = mkdir -p $(1)
 run_program = ./$(1)
-remove_build = rm -rf $(OBJ_DIR) $(LIB_DIR) $(BIN_DIR)
+remove_build = rm -rf $(OBJ_ROOT) $(LIB_ROOT) $(BIN_DIR)
 endif
 
 # Default target; IDEs such as CLion run "make all" when importing a Makefile project.
@@ -108,5 +115,14 @@ clean:
 
 # Header dependencies written by -MMD: a changed header rebuilds the files that include it
 -include $(ALL_OBJECTS:.o=.d)
+
+# CLion (and other IDEs) learn the compile commands from a dry run: make --just-print all. When the
+# build is up to date that would print nothing ("No compilation commands found"), so in a dry run
+# every object counts as out of date. Real builds stay incremental.
+ifneq ($(findstring n,$(firstword -$(MAKEFLAGS))),)
+$(ALL_OBJECTS): force_listing
+force_listing:
+.PHONY: force_listing
+endif
 
 .PHONY: all rungame minesweeper_test run test clean
