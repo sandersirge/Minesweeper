@@ -1,17 +1,21 @@
-# Klassikaline versioon (arhiiv)
+# Classic version (archive)
 
-Mängu esimene graafiline versioon: mängulaua andmed küsitakse terminalis ning mängitakse kas
-terminalis või lihtsas aknas `pildid/` kausta piltidega.
+The first graphical version of the game: the board settings are asked in the terminal, and the game
+is played either in the terminal or in a simple window that uses the images in `pildid/`.
 
-<img width="498" height="417" alt="Klassikaline versioon" src="https://github.com/user-attachments/assets/81f23ec5-67b7-48a9-ab8d-bc5fdde7edcf" />
+<img width="498" height="417" alt="The classic version" src="https://github.com/user-attachments/assets/81f23ec5-67b7-48a9-ab8d-bc5fdde7edcf" />
 
-Uus graafiline liides (menüü, raskusastmed, piksel-graafika) on projekti kaustades `src/gui` ja `inc/gui`.
-Mõlemad kasutavad sama mänguloogikat (`inc/minesweeper.hpp`, `src/minesweeper.cpp`).
+The current graphical interface (menu, difficulty levels, pixel art) is in `src/gui` and `inc/gui`.
+Both versions use the same game logic (`inc/minesweeper.hpp`, `src/minesweeper.cpp`).
 
-Ehitamine (projekti juurkaustast):
+Build it from the project root:
+
 ```shell
 cmake -S . -B build -G Ninja
 cmake --build build --target rungame_classic
 cd build/bin && ./rungame_classic
 ```
-`pildid` kopeeritakse käivitatava faili kõrvale; käivita see `build/bin` kaustast.
+
+CMake copies `pildid/` next to the program; start it from `build/bin` so the images are found. The
+Makefile does not build this version. In the terminal, type the answers and press Enter; Ctrl+D
+(Ctrl+Z on Windows) ends the input and closes the game.

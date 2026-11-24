@@ -1,88 +1,101 @@
-# Kirjeldus
-See grupitöö on kloon teadatuntud mängust *Minesweeper*, kasutades loogikaks C++ programmeerimiskeelt ning SFML teeki graafika jaoks.<br /><br />
-<img width="700" alt="Menüü, mäng ja kaotus" src="docs/ekraanipilt.png" /><br />
+# Minesweeper
 
-Graafiline stiil (sinine piksel-ruudustik, reageeriv nägu, laine mängu lõpus) on inspireeritud projektist [Kofybrek/Minesweeper](https://github.com/Kofybrek/Minesweeper); kood ja piksel-graafika on selle projekti omad. Esimene versioon (terminal ja pildifailidega aken) on kaustas [archive/classic](archive/classic).
+A clone of the classic *Minesweeper* in C++17 with [SFML 3](https://www.sfml-dev.org). It started as
+a group project and now has a pixel-art interface with a start menu, difficulty levels and custom
+boards.
 
-# Funktsionaalsused
- - Algusmenüü: raskusaste (algaja 9×9 · 10, keskmine 16×16 · 40, ekspert 16×30 · 99) või kohandatud kõrgus, laius ja pommide arv
- - Vasak klõps avab ruudu, parem klõps paneb või võtab lipu
- - Avatud numbril vasak (või keskmine) klõps avab ümbruse, kui ümber on sama palju lippe kui number näitab
- - Esimene käik ei ole kunagi pomm (kui ruumi on, on ka selle ümbrus vaba)
- - Tühja ruudu avamine avab kogu tühja ala koos ümbritsevate numbritega
- - Võidad, kui kõik pommita ruudud on avatud (lippe ei pea panema)
- - Ülemisel ribal: märkimata pommid, nägu (klõps = uus mäng) ja aeg
- - Mängu lõpus levib laine (kaotusel punane, võidul valge); kaotusel näidatakse pomme ja valesid lippe
- - Klahvid: Enter / F2 uus mäng, Esc menüüsse (menüüs: 1-3 raskusaste, Enter alusta, Esc välju)
- - Aken suurendab piksel-graafikat täisarvu korda, nii et see on ka suurel ekraanil terav
+<img width="700" alt="Start menu, a game in progress and a lost game" src="docs/screenshot.png" />
 
-# Projekti ülesehitus
- .<br />
- ├─ inc - Päisefailid (*.hpp).<br />
- │    ├─ minesweeper.hpp - Mängu loogika (ei sõltu SFML-ist).<br />
- │    └─ gui - Graafilise liidese päised.<br />
- ├─ src - Lähtekood (*.cpp).<br />
- │    ├─ main.cpp - Käivitab graafilise rakenduse.<br />
- │    ├─ minesweeper.cpp - Mängu loogika.<br />
- │    └─ gui<br />
- │         ├─ app.cpp - Aken, menüü ja mängu vahetamine.<br />
- │         ├─ menu_screen.cpp - Algusmenüü (raskusaste, kohandatud laud).<br />
- │         ├─ game_screen.cpp - Mängulaud, ülemine riba, laine ja lõputeade.<br />
- │         ├─ pixel_font.cpp - 5x7 piksel-kiri (ka Õ Ä Ö Ü).<br />
- │         ├─ icons.cpp - Lipp, pomm ja nägu piksel-graafikana.<br />
- │         └─ canvas.cpp, screen.cpp (+ theme.hpp) - Joonistamine, nupud, värvid.<br />
- ├─ tests<br />
- │    └─ minesweeper_test.cpp - Mänguloogika testid (aknata).<br />
- ├─ archive/classic - Esimene versioon (terminal ja pildid/ kausta piltidega aken).<br />
- ├─ obj, lib, bin - Makefile'i väljund (objektfailid, loogika teek, programmid); gitis ignoreeritud.<br />
- ├─ .clang-format - Koodi vormindus (CLion: Code → Reformat Code).<br />
- ├─ CMakeLists.txt - CMake'i ehitus (mäng, arhiveeritud versioon, testid).<br />
- ├─ Makefile - Kompileerib mängu *bin/rungame* ja testid (muutmise ja kasutamise juhend allpool).<br />
- └─ README.md
+## Features
 
-# Mängu kasutamise juhend
-## Linux
-Üldise info SFML projekti kasutamise kohta leiab ametlikust vikist (https://www.sfml-dev.org/tutorials/3.0/getting-started/linux/#compiling-an-sfml-program) <br />
-Mängule on loodud ka *Makefile*, et automaatselt kompileerida ja linkida.<br />
+- **Start menu** with the classic difficulty levels (beginner 9×9 · 10 mines, intermediate
+  16×16 · 40, expert 16×30 · 99) or a custom height, width and mine count
+- **Safe first move**: the first opened cell is never a mine, and when there is room its
+  neighbours are free too, so the first click opens an area
+- **Flood fill**: opening an empty cell opens the whole empty area and the numbers around it
+- **Chording**: clicking an opened number opens its neighbours once enough flags are placed
+- **Status bar** with the mines left to flag, a face that doubles as the new-game button, and a timer
+- **End of game**: a wave spreads across the board (red on a loss, white on a win); after a loss the
+  mines are shown, the one that went off in red, and wrong flags are crossed out
+- **Sharp pixel art at any size**: everything (font, flag, mine, face) is drawn in code and scaled
+  by a whole number to fit the screen
+- The in-game text is in Estonian
+
+## Controls
+
+| Input | In the game | In the menu |
+|---|---|---|
+| Left click | open a cell; on a number: open its neighbours | press a button |
+| Right click | place or remove a flag | |
+| Middle click | open the neighbours of a number | |
+| Click the face | new game | |
+| Enter / F2 | new game with the same settings | start (Enter) |
+| Esc | back to the menu | quit |
+| 1, 2, 3 | | choose beginner, intermediate or expert |
+
+You win by opening every cell without a mine; flags are optional.
+
+## Quick start
+
+Install a C++17 compiler and SFML 3 (see [docs/building.md](docs/building.md) for Windows, Linux
+and macOS), then:
+
 ```shell
-make
-./bin/rungame     # või: make run
-```
-#### Mängu jooksutamiseks on vaja järgmisi pakette:<br />
- - SFML, versioon 3 (lihtsaim on kasutada enda süsteemi paketihaldurit)<br />
- - C++ keele kompilaator (Vaikimisi kasutatakse g++, endale sobiva kompilaatori kasutamiseks muuta failis "Makefile" muutujat "COMPILER")<br />
- - make (käsk ei pruugi kõikide süsteemidega kaasa tulla)<br />
-#### Näidis programmi kasutamisest:<br />
-```shell
-git clone https://github.com/MartinMaenniste/cppRyhmatoo.git
-cd cppRyhmatoo
-
-make
-./bin/rungame
-```
-Ubuntu/Debian (ka WSL) paketid:
-```shell
-sudo apt install build-essential cmake ninja-build pkg-config libsfml-dev
+make            # Windows PowerShell/cmd: mingw32-make
+./bin/rungame   # Windows: .\bin\rungame.exe
 ```
 
-## CMake (Linux, WSL, Windows)
+or with CMake:
+
 ```shell
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ./build/bin/rungame
 ```
-Testid: `ctest --test-dir build` (või `make test`). CMake paneb programmid kausta `build/bin` ja teegi kausta `build/lib`.<br />
-CMake kasutab paigaldatud SFML 3-e; kui seda pole, laeb ja kompileerib ta selle ise (`-DMINESWEEPER_FETCH_SFML=OFF` keelab). Mäng ei vaja pildifaile, kogu graafika joonistatakse koodis. Arhiveeritud versioon ehitatakse sihtmärgina `rungame_classic` (`-DMINESWEEPER_BUILD_ARCHIVE=OFF` jätab selle välja).
 
-## Windows (MSYS2)
-Testitud MSYS2 UCRT64 keskkonnas (GCC, SFML 3.1).
-1. Paigalda MSYS2: `winget install MSYS2.MSYS2`
-2. Ava **MSYS2 UCRT64** terminal ja paigalda tööriistad:
-   ```shell
-   pacman -S --needed mingw-w64-ucrt-x86_64-{gcc,gdb,cmake,ninja,pkgconf,sfml} make
-   ```
-3. Kompileeri samas terminalis kas `make` või ülaltoodud CMake käskudega.
-4. Väljaspool MSYS2 terminali käivitamiseks lisa `C:\msys64\ucrt64\bin` PATH-i (seal on vajalikud DLL-id).
+Run the tests with `make test` or `ctest --test-dir build`.
 
-CLionis vali *Settings → Build, Execution, Deployment → Toolchains* alt MinGW tööriistakomplekt kaustaga `C:\msys64\ucrt64`.<br />
-Visual Studio puhul aitab ametlik vikileht - https://www.sfml-dev.org/tutorials/3.0/getting-started/visual-studio/
+## Documentation
+
+- [docs/building.md](docs/building.md): installing the tools, every Makefile and CMake command,
+  CLion setup, code formatting and troubleshooting
+- [archive/classic](archive/classic): the first version of the game (terminal or a simple window
+  with image files)
+
+## Project structure
+
+```text
+.
+├── inc/                     headers
+│   ├── minesweeper.hpp      game logic (does not depend on SFML)
+│   └── gui/                 interface headers
+├── src/                     sources
+│   ├── main.cpp             starts the graphical application
+│   ├── minesweeper.cpp      game logic
+│   └── gui/
+│       ├── app.cpp          window and switching between menu and game
+│       ├── menu_screen.cpp  start menu (difficulty, custom board)
+│       ├── game_screen.cpp  board, status bar, end-of-game wave and banner
+│       ├── pixel_font.cpp   5x7 pixel font (with Õ Ä Ö Ü)
+│       ├── icons.cpp        flag, mine and face pixel art
+│       └── canvas.cpp, screen.cpp (+ theme.hpp)  drawing, buttons, colours
+├── tests/
+│   └── minesweeper_test.cpp game logic tests (no window needed)
+├── archive/classic/         the first version of the game
+├── docs/                    build guide and screenshot
+├── .github/workflows/       CI: builds and tests on Linux, Windows (MSYS2) and macOS
+├── .clang-format            code style
+├── CMakeLists.txt           CMake build (game, classic version, tests)
+└── Makefile                 make build (game and tests into obj/, lib/, bin/)
+```
+
+The game logic in `minesweeper.hpp` has no SFML dependency, so it is tested on its own; both the
+new interface and the classic version draw the board through `Minesweeper::cell()`.
+
+## Credits
+
+- Originally a group project; the original repository is
+  [MartinMaenniste/cppRyhmatoo](https://github.com/MartinMaenniste/cppRyhmatoo).
+- The visual style (blue pixel grid, reacting face, end-of-game wave) is inspired by
+  [Kofybrek/Minesweeper](https://github.com/Kofybrek/Minesweeper). No code or images were copied:
+  the code and pixel art in this project are its own.
