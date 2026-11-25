@@ -6,16 +6,20 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <functional>
+#include <limits>
+#include <queue>
 #include <string>
+#include <utility>
 
 using namespace std;
 
 namespace {
 
 constexpr float CELL = static_cast<float>(theme::CELL);
-constexpr float WAVE_STEP = 0.035f;  // seconds per cell of distance
-constexpr float WAVE_JITTER = 0.05f; // random extra delay so the wave looks lively
-constexpr float WAVE_CELL = 0.28f;   // how long the effect lasts on one cell
+constexpr float WAVE_STEP_MIN = 0.01f; // the wave needs 0.01-0.09 s to move to a neighbouring cell,
+constexpr float WAVE_STEP_MAX = 0.09f; // chosen at random for every step
+constexpr float WAVE_CELL = 0.28f;     // how long the effect lasts on one cell
 constexpr float BANNER_HEIGHT = 56.f;
 
 } // namespace
@@ -136,20 +140,49 @@ void GameScreen::play(const CellPosition& cell, bool flag, bool chord) {
 	}
 }
 
-// When the game ends a wave spreads from the clicked cell (red on a loss, white on a win)
+// When the game ends a wave spreads from the clicked cell (red on a loss, white on a win). It spreads
+// like fire: every step from a cell to its neighbour (up, down, left, right) takes a random time,
+// and a cell starts when the fastest path from the clicked cell reaches it (Dijkstra's shortest
+// paths over those random steps). Some directions race ahead while others lag, so the front is
+// ragged instead of a smooth ring.
 void GameScreen::startWave(const CellPosition& origin) {
-	uniform_real_distribution<float> jitter(0.f, WAVE_JITTER);
-	waveDelays.assign(static_cast<size_t>(settings.rows) * settings.columns, 0.f);
-	waveLength = 0.f;
-	for (int r = 0; r < settings.rows; r++) {
-		for (int c = 0; c < settings.columns; c++) {
-			const float distance =
-			    hypot(static_cast<float>(r - origin.row), static_cast<float>(c - origin.column));
-			const float delay = distance * WAVE_STEP + jitter(rng);
-			waveDelays[static_cast<size_t>(r) * settings.columns + c] = delay;
-			waveLength = max(waveLength, delay + WAVE_CELL);
+	const int rows = settings.rows;
+	const int columns = settings.columns;
+	waveDelays.assign(static_cast<size_t>(rows) * columns, numeric_limits<float>::infinity());
+
+	uniform_real_distribution<float> stepTime(WAVE_STEP_MIN, WAVE_STEP_MAX);
+	using Arrival = pair<float, size_t>; // (time, cell index)
+	priority_queue<Arrival, vector<Arrival>, greater<Arrival>> pending;
+	const size_t start = static_cast<size_t>(origin.row) * columns + origin.column;
+	waveDelays[start] = 0.f;
+	pending.push({0.f, start});
+
+	constexpr int ROW_STEP[4] = {-1, 1, 0, 0};
+	constexpr int COLUMN_STEP[4] = {0, 0, -1, 1};
+	while (!pending.empty()) {
+		const auto [time, index] = pending.top();
+		pending.pop();
+		if (time > waveDelays[index]) {
+			continue; // a faster path already reached this cell
+		}
+		const int row = static_cast<int>(index / columns);
+		const int column = static_cast<int>(index % columns);
+		for (int k = 0; k < 4; k++) {
+			const int r = row + ROW_STEP[k];
+			const int c = column + COLUMN_STEP[k];
+			if (r < 0 || r >= rows || c < 0 || c >= columns) {
+				continue;
+			}
+			const size_t next = static_cast<size_t>(r) * columns + c;
+			const float arrival = time + stepTime(rng);
+			if (arrival < waveDelays[next]) {
+				waveDelays[next] = arrival;
+				pending.push({arrival, next});
+			}
 		}
 	}
+
+	waveLength = *max_element(waveDelays.begin(), waveDelays.end()) + WAVE_CELL;
 	sinceEnd = 0.f;
 	waveActive = true;
 }
