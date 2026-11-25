@@ -9,7 +9,8 @@ This guide covers every way to build, run and test the game: the **Makefile**, *
 - [3. Build with CMake](#3-build-with-cmake)
 - [4. Set up CLion](#4-set-up-clion)
 - [5. Format the code](#5-format-the-code)
-- [6. Troubleshooting](#6-troubleshooting)
+- [6. Packages and releases](#6-packages-and-releases)
+- [7. Troubleshooting](#7-troubleshooting)
 
 ## 1. Install the tools
 
@@ -226,7 +227,38 @@ clang-format -i src/*.cpp src/gui/*.cpp inc/*.hpp inc/gui/*.hpp tests/*.cpp arch
 The pixel-art bitmaps in `src/gui/icons.cpp` are excluded with `// clang-format off` so each row
 stays on its own line.
 
-## 6. Troubleshooting
+## 6. Packages and releases
+
+Two GitHub Actions workflows build downloads that run without an installed SFML:
+
+- **Package** (`.github/workflows/package.yml`) builds the game for Windows x64, Linux x64 and
+  macOS arm64, runs the tests and uploads one archive per platform
+  (`minesweeper-<version>-<platform>.zip`, `.tar.gz` on Linux). SFML is downloaded and linked
+  statically; on Windows the compiler runtime is linked in too, so `rungame.exe` needs no DLLs. Start
+  it by hand under *Actions → Package → Run workflow*; the archives appear under *Artifacts* on
+  the run's page.
+- **Release** (`.github/workflows/release.yml`) runs when a tag starting with `v` is pushed. It runs
+  the Package workflow with the tag as the version and publishes a GitHub release with the archives
+  and notes generated from the commits.
+
+To publish a release, tag the commit and push the tag (`-s` signs the tag with your GPG key):
+
+```shell
+git tag -s v1.0.0 -m "Minesweeper 1.0.0"
+git push origin v1.0.0
+```
+
+To build the same static package locally (here with MSYS2; leave out `-static` elsewhere):
+
+```shell
+cmake -S . -B build-package -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF       -DMINESWEEPER_BUILD_ARCHIVE=OFF -DCMAKE_EXE_LINKER_FLAGS=-static
+cmake --build build-package
+```
+
+On a machine with SFML installed, CMake uses that instead of downloading it; the result then needs
+the installed SFML to run.
+
+## 7. Troubleshooting
 
 **"No compilation commands found" / "file does not belong to any target" in CLion** (Makefile
 project): reload with *Tools → Makefile → Reload Makefile Project*. If it persists, check that the

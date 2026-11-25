@@ -35,6 +35,16 @@ boards.
 
 You win by opening every cell without a mine; flags are optional.
 
+## Download
+
+Ready-to-run builds for Windows (x64), Linux (x64) and macOS (Apple Silicon) are on the
+[Releases](https://github.com/sandersirge/Minesweeper/releases) page; nothing else needs to be
+installed. Unpack the archive and start `rungame` (`rungame.exe` on Windows).
+
+- **macOS**: the build is not signed, so the first time right-click `rungame` and choose *Open*, or
+  run `xattr -d com.apple.quarantine rungame`.
+- **Linux**: built on Ubuntu 24.04; it needs the usual desktop libraries (X11, OpenGL, FreeType).
+
 ## Quick start
 
 Install a C++17 compiler and SFML 3 (see [docs/building.md](docs/building.md) for Windows, Linux
@@ -58,7 +68,7 @@ Run the tests with `make test` or `ctest --test-dir build`.
 ## Documentation
 
 - [docs/building.md](docs/building.md): installing the tools, every Makefile and CMake command,
-  CLion setup, code formatting and troubleshooting
+  CLion setup, code formatting, packages and releases, and troubleshooting
 - [archive/classic](archive/classic): the first version of the game (terminal or a simple window
   with image files)
 

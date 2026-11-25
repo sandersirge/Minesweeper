@@ -1,0 +1,131 @@
+name: Package
+
+# Builds a ready-to-run download of the game for Windows, Linux and macOS.
+# SFML (and FreeType) are downloaded and linked statically, so the archives need no installed
+# SFML; on Windows the compiler runtime is linked in as well, so rungame.exe has no DLLs next to it.
+#
+# Runs by hand (Actions -> Package -> Run workflow), when this file changes, and from the Release
+# workflow, which attaches the archives to a GitHub release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version in the archive names (default: short commit hash)"
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+  push:
+    branches: [master, main]
+    paths: [".github/workflows/package.yml"]
+
+env:
+  # Shared CMake options: release build, SFML fetched and built statically, no archived version
+  CMAKE_OPTIONS: >-
+    -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+    -DMINESWEEPER_FETCH_SFML=ON -DMINESWEEPER_BUILD_ARCHIVE=OFF
+
+jobs:
+  package:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            runner: windows-latest
+            platform: windows-x64
+            shell: msys2 {0}
+          # Built on the oldest supported Ubuntu, so the binary also runs on newer systems
+          - name: Linux x64
+            runner: ubuntu-24.04
+            platform: linux-x64
+            shell: bash
+          - name: macOS arm64
+            runner: macos-latest
+            platform: macos-arm64
+            shell: bash
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install build tools (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: git zip
+          pacboy: gcc:p cmake:p ninja:p
+
+      - name: Install build tools (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build \
+            libxrandr-dev libxcursor-dev libxi-dev libudev-dev libfreetype-dev \
+            libgl1-mesa-dev libegl1-mesa-dev
+
+      - name: Install build tools (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: Version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          version="${VERSION:-${GITHUB_SHA::7}}"
+          echo "PACKAGE=minesweeper-$version-${{ matrix.platform }}" >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: |
+          extra=""
+          case "${{ runner.os }}" in
+            Windows) extra="-DCMAKE_EXE_LINKER_FLAGS=-static" ;;
+            macOS) extra="-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0" ;;
+          esac
+          cmake -S . -B build -G Ninja $CMAKE_OPTIONS $extra
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Check the game's dependencies
+        run: |
+          case "${{ runner.os }}" in
+            Windows)
+              ldd build/bin/rungame.exe
+              # Only Windows' own DLLs may remain
+              if ldd build/bin/rungame.exe | grep -iv '/c/windows/' | grep -q '=>'; then
+                echo "::error::rungame.exe needs DLLs that are not part of Windows"; exit 1
+              fi ;;
+            Linux) ldd build/bin/rungame; ! ldd build/bin/rungame | grep -iq sfml ;;
+            macOS) otool -L build/bin/rungame; ! otool -L build/bin/rungame | grep -iq -e sfml -e homebrew ;;
+          esac
+
+      - name: Make the archive
+        run: |
+          mkdir -p "dist/$PACKAGE"
+          cp build/bin/rungame* README.md "dist/$PACKAGE/"
+          cd dist
+          if [ "${{ runner.os }}" = Linux ]; then
+            tar -czf "$PACKAGE.tar.gz" "$PACKAGE"
+          else
+            zip -r "$PACKAGE.zip" "$PACKAGE"
+          fi
+          ls -l
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.PACKAGE }}
+          path: dist/${{ env.PACKAGE }}.*
+          if-no-files-found: error
