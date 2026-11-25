@@ -49,15 +49,19 @@ private:
 
 	float elapsed = 0.f;  // game time in seconds, runs from the first opened cell to the end
 	float sinceEnd = 0.f; // time since the game ended (for the wave animation)
+	// End-of-game wave: it fills the board, the banner appears, then the covering recedes
 	bool waveActive = false;
-	std::vector<float> waveDelays; // when the wave reaches each cell (seconds after the end)
-	float waveLength = 0.f;
+	std::vector<float> fillDelays;  // when the fill reaches each cell (seconds after the end)
+	std::vector<float> decayDelays; // when the decay reaches each cell (seconds after decayStart)
+	float bannerTime = 0.f;         // the board is fully covered and the banner appears
+	float decayStart = 0.f;         // the covering starts to recede
 	std::mt19937 rng{std::random_device{}()};
 
 	std::optional<CellPosition> cellAt(sf::Vector2f mouse) const;
 	sf::FloatRect faceArea() const;
 	void play(const CellPosition& cell, bool flag, bool chord);
 	void startWave(const CellPosition& origin);
+	std::vector<float> spreadTimes(const CellPosition& origin, float stepMin, float stepMax);
 	icons::Face faceState() const;
 	void drawBar(Canvas& canvas) const;
 	void drawCell(Canvas& canvas, int row, int column) const;

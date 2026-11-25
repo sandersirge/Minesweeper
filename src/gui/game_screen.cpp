@@ -17,10 +17,18 @@ using namespace std;
 namespace {
 
 constexpr float CELL = static_cast<float>(theme::CELL);
-constexpr float WAVE_STEP_MIN = 0.01f; // the wave needs 0.01-0.09 s to move to a neighbouring cell,
-constexpr float WAVE_STEP_MAX = 0.09f; // chosen at random for every step
-constexpr float WAVE_CELL = 0.34f;     // how long the effect lasts on one cell
-constexpr float WAVE_GROW = 0.4f;      // part of that time the square needs to reach full size
+// The end-of-game wave has three phases:
+//   fill   - the covering spreads from the clicked cell until the whole board is covered
+//   banner - the result banner appears on the fully covered board
+//   decay  - after a pause the covering recedes, spreading the same way but more slowly
+// Moving to a neighbouring cell takes a random time between MIN and MAX for every step.
+constexpr float FILL_STEP_MIN = 0.02f;
+constexpr float FILL_STEP_MAX = 0.12f;
+constexpr float DECAY_STEP_MIN = 0.12f;
+constexpr float DECAY_STEP_MAX = 0.50f;
+constexpr float FILL_BURST = 0.25f; // a cell's square grows to full size, its hot centre cools down
+constexpr float DECAY_PAUSE = 0.6f; // time between the banner appearing and the decay starting
+constexpr float DECAY_CELL = 0.70f; // a cell's square shrinks and fades out
 constexpr float BANNER_HEIGHT = 56.f;
 
 } // namespace
@@ -38,7 +46,8 @@ void GameScreen::start(const Settings& newSettings) {
 	backToMenu = false;
 	elapsed = sinceEnd = 0.f;
 	waveActive = false;
-	waveDelays.clear();
+	fillDelays.clear();
+	decayDelays.clear();
 }
 
 sf::Vector2u GameScreen::logicalSize() const {
@@ -141,21 +150,22 @@ void GameScreen::play(const CellPosition& cell, bool flag, bool chord) {
 	}
 }
 
-// When the game ends a wave spreads from the clicked cell (red on a loss, white on a win). It spreads
-// like fire: every step from a cell to its neighbour (up, down, left, right) takes a random time,
-// and a cell starts when the fastest path from the clicked cell reaches it (Dijkstra's shortest
-// paths over those random steps). Some directions race ahead while others lag, so the front is
-// ragged instead of a smooth ring.
-void GameScreen::startWave(const CellPosition& origin) {
+// When the game ends a wave covers the board (red on a loss, white on a win), the banner appears,
+// then the covering recedes. Both the fill and the decay spread like fire from the clicked cell:
+// every step from a cell to its neighbour (up, down, left, right) takes a random time, and a cell
+// is reached when the fastest path from the clicked cell gets there (Dijkstra's shortest paths over
+// those random steps). Some directions race ahead while others lag, so the front is ragged instead
+// of a smooth ring.
+vector<float> GameScreen::spreadTimes(const CellPosition& origin, float stepMin, float stepMax) {
 	const int rows = settings.rows;
 	const int columns = settings.columns;
-	waveDelays.assign(static_cast<size_t>(rows) * columns, numeric_limits<float>::infinity());
+	vector<float> times(static_cast<size_t>(rows) * columns, numeric_limits<float>::infinity());
 
-	uniform_real_distribution<float> stepTime(WAVE_STEP_MIN, WAVE_STEP_MAX);
+	uniform_real_distribution<float> stepTime(stepMin, stepMax);
 	using Arrival = pair<float, size_t>; // (time, cell index)
 	priority_queue<Arrival, vector<Arrival>, greater<Arrival>> pending;
 	const size_t start = static_cast<size_t>(origin.row) * columns + origin.column;
-	waveDelays[start] = 0.f;
+	times[start] = 0.f;
 	pending.push({0.f, start});
 
 	constexpr int ROW_STEP[4] = {-1, 1, 0, 0};
@@ -163,7 +173,7 @@ void GameScreen::startWave(const CellPosition& origin) {
 	while (!pending.empty()) {
 		const auto [time, index] = pending.top();
 		pending.pop();
-		if (time > waveDelays[index]) {
+		if (time > times[index]) {
 			continue; // a faster path already reached this cell
 		}
 		const int row = static_cast<int>(index / columns);
@@ -176,14 +186,21 @@ void GameScreen::startWave(const CellPosition& origin) {
 			}
 			const size_t next = static_cast<size_t>(r) * columns + c;
 			const float arrival = time + stepTime(rng);
-			if (arrival < waveDelays[next]) {
-				waveDelays[next] = arrival;
+			if (arrival < times[next]) {
+				times[next] = arrival;
 				pending.push({arrival, next});
 			}
 		}
 	}
+	return times;
+}
 
-	waveLength = *max_element(waveDelays.begin(), waveDelays.end()) + WAVE_CELL;
+void GameScreen::startWave(const CellPosition& origin) {
+	fillDelays = spreadTimes(origin, FILL_STEP_MIN, FILL_STEP_MAX);
+	decayDelays = spreadTimes(origin, DECAY_STEP_MIN, DECAY_STEP_MAX);
+	// The banner waits until the last cell's square has grown to full size
+	bannerTime = *max_element(fillDelays.begin(), fillDelays.end()) + FILL_BURST;
+	decayStart = bannerTime + DECAY_PAUSE;
 	sinceEnd = 0.f;
 	waveActive = true;
 }
@@ -216,7 +233,7 @@ void GameScreen::draw(Canvas& canvas) const {
 	if (waveActive) {
 		drawWave(canvas);
 	}
-	if (minesweeper.isOver() && sinceEnd >= waveLength) {
+	if (minesweeper.isOver() && sinceEnd >= bannerTime) {
 		drawBanner(canvas);
 	}
 }
@@ -294,25 +311,37 @@ void GameScreen::drawWave(Canvas& canvas) const {
 	sf::Color core = lost ? theme::WAVE_LOSS_CORE : theme::WAVE_WIN_CORE;
 	for (int r = 0; r < settings.rows; r++) {
 		for (int c = 0; c < settings.columns; c++) {
-			const float t = sinceEnd - waveDelays[static_cast<size_t>(r) * settings.columns + c];
-			if (t < 0.f || t >= WAVE_CELL) {
+			const size_t index = static_cast<size_t>(r) * settings.columns + c;
+			const float sinceFill = sinceEnd - fillDelays[index];
+			if (sinceFill < 0.f) {
+				continue; // the fill has not reached this cell yet
+			}
+			// Fill: a square bursts from the middle of the cell to the full cell (covering the grid
+			// lines) with a hot centre that cools down, then the cell stays covered.
+			const float growth = min(1.f, sinceFill / FILL_BURST);
+			float size = 2.f * round(growth * CELL / 2.f);
+			float fade = 1.f;
+			// Decay: once the decay reaches the cell, the square shrinks and fades out
+			const float sinceDecay = sinceEnd - decayStart - decayDelays[index];
+			if (sinceDecay >= DECAY_CELL) {
 				continue;
 			}
-			const float progress = t / WAVE_CELL;
-			// A square bursts from the middle of the cell to the full cell (covering the grid lines)
-			// in the first part of its life, stays fully bright for half of it, then fades out.
-			const float growth = min(1.f, progress / WAVE_GROW);
-			const float size = 2.f * round(growth * CELL / 2.f);
-			const float fade = progress < 0.5f ? 1.f : 1.f - (progress - 0.5f) / 0.5f;
+			if (sinceDecay >= 0.f) {
+				const float left = 1.f - sinceDecay / DECAY_CELL;
+				size = 2.f * round(left * CELL / 2.f);
+				fade = left;
+			}
 			color.a = static_cast<uint8_t>(255.f * fade);
-			core.a = color.a;
 			const float x = boardX + c * CELL + floor((CELL - 1.f - size) / 2.f);
 			const float y = boardY + r * CELL + floor((CELL - 1.f - size) / 2.f);
 			canvas.rect(x, y, size, size, color);
-			// A smaller, brighter centre makes it look hot (on a win both colours are white)
-			const float coreSize = 2.f * round(size / 4.f);
-			const float coreOffset = (size - coreSize) / 2.f;
-			canvas.rect(x + coreOffset, y + coreOffset, coreSize, coreSize, core);
+			// A smaller, brighter centre makes a new square look hot (on a win both colours are white)
+			core.a = static_cast<uint8_t>(255.f * fade * (1.f - growth));
+			if (core.a > 0) {
+				const float coreSize = 2.f * round(size / 4.f);
+				const float coreOffset = (size - coreSize) / 2.f;
+				canvas.rect(x + coreOffset, y + coreOffset, coreSize, coreSize, core);
+			}
 		}
 	}
 }
