@@ -19,7 +19,8 @@ namespace {
 constexpr float CELL = static_cast<float>(theme::CELL);
 constexpr float WAVE_STEP_MIN = 0.01f; // the wave needs 0.01-0.09 s to move to a neighbouring cell,
 constexpr float WAVE_STEP_MAX = 0.09f; // chosen at random for every step
-constexpr float WAVE_CELL = 0.28f;     // how long the effect lasts on one cell
+constexpr float WAVE_CELL = 0.34f;     // how long the effect lasts on one cell
+constexpr float WAVE_GROW = 0.4f;      // part of that time the square needs to reach full size
 constexpr float BANNER_HEIGHT = 56.f;
 
 } // namespace
@@ -288,7 +289,9 @@ void GameScreen::drawCell(Canvas& canvas, int row, int column) const {
 }
 
 void GameScreen::drawWave(Canvas& canvas) const {
-	sf::Color color = minesweeper.isLost() ? theme::WAVE_LOSS : theme::WAVE_WIN;
+	const bool lost = minesweeper.isLost();
+	sf::Color color = lost ? theme::WAVE_LOSS : theme::WAVE_WIN;
+	sf::Color core = lost ? theme::WAVE_LOSS_CORE : theme::WAVE_WIN_CORE;
 	for (int r = 0; r < settings.rows; r++) {
 		for (int c = 0; c < settings.columns; c++) {
 			const float t = sinceEnd - waveDelays[static_cast<size_t>(r) * settings.columns + c];
@@ -296,12 +299,20 @@ void GameScreen::drawWave(Canvas& canvas) const {
 				continue;
 			}
 			const float progress = t / WAVE_CELL;
-			// A square that grows from the middle of the cell while fading out
-			const float size = 2.f * round(progress * (CELL - 1.f) / 2.f);
-			color.a = static_cast<uint8_t>(230.f * (1.f - progress));
+			// A square bursts from the middle of the cell to the full cell (covering the grid lines)
+			// in the first part of its life, stays fully bright for half of it, then fades out.
+			const float growth = min(1.f, progress / WAVE_GROW);
+			const float size = 2.f * round(growth * CELL / 2.f);
+			const float fade = progress < 0.5f ? 1.f : 1.f - (progress - 0.5f) / 0.5f;
+			color.a = static_cast<uint8_t>(255.f * fade);
+			core.a = color.a;
 			const float x = boardX + c * CELL + floor((CELL - 1.f - size) / 2.f);
 			const float y = boardY + r * CELL + floor((CELL - 1.f - size) / 2.f);
 			canvas.rect(x, y, size, size, color);
+			// A smaller, brighter centre makes it look hot (on a win both colours are white)
+			const float coreSize = 2.f * round(size / 4.f);
+			const float coreOffset = (size - coreSize) / 2.f;
+			canvas.rect(x + coreOffset, y + coreOffset, coreSize, coreSize, core);
 		}
 	}
 }

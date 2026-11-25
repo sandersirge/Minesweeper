@@ -33,7 +33,9 @@ inline constexpr sf::Color BUTTON_SELECTED{72, 132, 255};
 inline constexpr sf::Color BUTTON_BORDER{4, 14, 56};
 
 inline constexpr sf::Color WAVE_WIN{255, 255, 255};
-inline constexpr sf::Color WAVE_LOSS{255, 52, 24};
+inline constexpr sf::Color WAVE_WIN_CORE{255, 255, 255};
+inline constexpr sf::Color WAVE_LOSS{255, 40, 16};       // explosion square
+inline constexpr sf::Color WAVE_LOSS_CORE{255, 214, 96}; // hot centre of the explosion square
 inline constexpr sf::Color BANNER{0, 0, 0, 176};
 
 // Colours of the numbers 1...8 (index 0 is unused)
